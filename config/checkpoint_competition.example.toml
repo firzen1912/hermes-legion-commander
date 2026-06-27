@@ -1,0 +1,127 @@
+[competition]
+repo = "/absolute/path/to/target-repository"
+plan = "docs/roadmap.md"
+state_dir = "../state/checkpoint-competition"
+base_ref = "HEAD"
+branch_prefix = "legion-competition"
+quota_wait = true
+quota_retry_seconds = 900
+quota_max_retry_seconds = 21600
+massive_files = 25
+massive_lines = 1500
+checks = [["python", "-m", "pytest", "-q"]]
+weights = { security = 0.35, correctness = 0.35, maintainability = 0.20, performance = 0.10 }
+
+# Base native CLI definitions. Role-specific model and effort values below
+# override these fields. Blank model values use the CLI's authenticated default.
+[agents.gpt]
+role = "Codex checkpoint competitor"
+runtime = "codex-cli"
+provider = "openai-codex"
+model = ""
+effort = "medium"
+prompt_transport = "stdin"
+output_format = "codex-jsonl"
+capabilities = ["web-search", "read-files", "edit-files", "shell", "tests", "experiments", "citations"]
+unset_env = ["OPENAI_BASE_URL", "OPENAI_API_BASE", "AZURE_OPENAI_ENDPOINT", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_URL"]
+command = ["codex", "{model_args}", "{effort_args}", "--sandbox", "workspace-write", "--ask-for-approval", "never", "--add-dir", "{context_dir}", "exec", "--json", "--output-last-message", "{output_file}", "-"]
+timeout_seconds = 21600
+
+[agents.claude]
+role = "Claude Code checkpoint competitor"
+runtime = "claude-code"
+provider = "anthropic-claude-code"
+model = ""
+effort = "medium"
+prompt_transport = "stdin"
+output_format = "claude-json"
+capabilities = ["web-search", "read-files", "edit-files", "shell", "tests", "experiments", "citations", "security-review"]
+unset_env = ["OPENAI_BASE_URL", "OPENAI_API_BASE", "AZURE_OPENAI_ENDPOINT", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_URL"]
+command = ["claude", "-p", "Execute the complete task supplied on standard input.", "--input-format", "text", "--output-format", "json", "--permission-mode", "acceptEdits", "{model_args}", "{effort_args}", "--add-dir", "{context_dir}"]
+timeout_seconds = 21600
+
+# Both competitors execute every role. Set exact model IDs accepted by your
+# installed CLI to use different models per role. Blank uses the CLI default.
+[role_matrix.roadmap_plan_reviewer.gpt]
+model = ""
+effort = "medium"
+[role_matrix.roadmap_plan_reviewer.claude]
+model = ""
+effort = "medium"
+
+[role_matrix.researcher.gpt]
+model = ""
+effort = "high"
+[role_matrix.researcher.claude]
+model = ""
+effort = "high"
+
+[role_matrix.literature_reviewer.gpt]
+model = ""
+effort = "high"
+[role_matrix.literature_reviewer.claude]
+model = ""
+effort = "high"
+
+[role_matrix.prototyper.gpt]
+model = ""
+effort = "high"
+[role_matrix.prototyper.claude]
+model = ""
+effort = "high"
+
+[role_matrix.code_polisher.gpt]
+model = ""
+effort = "medium"
+[role_matrix.code_polisher.claude]
+model = ""
+effort = "high"
+
+[role_matrix.security_assurance.gpt]
+model = ""
+effort = "high"
+[role_matrix.security_assurance.claude]
+model = ""
+effort = "high"
+
+[role_matrix.validation_artifacts.gpt]
+model = ""
+effort = "medium"
+[role_matrix.validation_artifacts.claude]
+model = ""
+effort = "medium"
+
+[role_matrix.cross_reviewer.gpt]
+model = ""
+effort = "high"
+[role_matrix.cross_reviewer.claude]
+model = ""
+effort = "high"
+
+[role_matrix.cross_polisher.gpt]
+model = ""
+effort = "high"
+[role_matrix.cross_polisher.claude]
+model = ""
+effort = "high"
+
+[role_matrix.judge.gpt]
+model = ""
+effort = "high"
+[role_matrix.judge.claude]
+model = ""
+effort = "high"
+
+[role_matrix.converger.gpt]
+model = ""
+effort = "high"
+[role_matrix.converger.claude]
+model = ""
+effort = "high"
+
+[role_matrix.final_verifier.gpt]
+model = ""
+effort = "high"
+[role_matrix.final_verifier.claude]
+model = ""
+effort = "high"

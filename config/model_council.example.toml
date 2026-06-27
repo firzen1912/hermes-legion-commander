@@ -1,0 +1,99 @@
+[council]
+repo = "/absolute/path/to/target-repository"
+state_dir = "../state/model-council"
+research_dir = "../state/research"
+max_prompt_chars = 120000
+default_budget = "balanced"
+campaign_strategy = "full"
+worker_failover = true
+failover_on = ["quota", "entitlement", "authentication"]
+quota_wait = true
+quota_retry_seconds = 900
+quota_max_retry_seconds = 21600
+massive_files = 25
+massive_lines = 1500
+roadmap_path = "/absolute/path/to/PROJECT/docs/roadmap.md"
+iterations_dir = "docs/iterations"
+tests_dir = "tests"
+experiments_dir = "experiments"
+results_dir = "results/iterations"
+version_test_command = ["python", "-m", "pytest", "-q"]
+version_experiment_command = ["python"]
+version_validation_timeout_seconds = 1800
+checks = [
+  ["python", "-m", "pytest", "-q"],
+  ["python", "-m", "ruff", "check", "src", "tools", "tests"],
+]
+
+# Two-worker default: Codex owns planning/research/prototyping; Claude owns
+# literature review, code polish, and security assurance.
+[roles]
+roadmap_plan_reviewer = "gpt"
+researcher = "gpt"
+prototyper = "gpt"
+literature_reviewer = "claude"
+code_polisher = "claude"
+security_assurance = "claude"
+
+[agents.gpt]
+role = "Roadmap reviewer, researcher, prototyper, test/experiment author, and evidence reconciler"
+runtime = "codex-cli"
+provider = "openai-codex"
+model = ""
+effort = "high"
+prompt_transport = "stdin"
+output_format = "codex-jsonl"
+capabilities = ["web-search", "read-files", "edit-files", "shell", "tests", "experiments", "citations"]
+unset_env = ["OPENAI_BASE_URL", "OPENAI_API_BASE", "AZURE_OPENAI_ENDPOINT", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_URL"]
+command = [
+  "codex", "{model_args}", "{effort_args}",
+  "--sandbox", "workspace-write",
+  "--ask-for-approval", "never",
+  "--add-dir", "{context_dir}",
+  "exec",
+  "--json",
+  "--output-last-message", "{output_file}",
+  "-",
+]
+timeout_seconds = 21600
+
+[agents.claude]
+role = "Literature reviewer, code quality/architecture polisher, and security assurance reviewer"
+runtime = "claude-code"
+provider = "anthropic-claude-code"
+model = ""
+effort = "high"
+prompt_transport = "stdin"
+output_format = "claude-json"
+capabilities = ["web-search", "read-files", "edit-files", "shell", "tests", "citations", "security-review"]
+unset_env = ["OPENAI_BASE_URL", "OPENAI_API_BASE", "AZURE_OPENAI_ENDPOINT", "ANTHROPIC_BASE_URL", "ANTHROPIC_API_URL"]
+command = [
+  "claude", "-p", "Execute the complete task supplied on standard input.",
+  "--input-format", "text",
+  "--output-format", "json",
+  "--permission-mode", "acceptEdits",
+  "--effort", "{effort}",
+  "--add-dir", "{context_dir}",
+]
+timeout_seconds = 21600
+
+[research]
+pdf_dir = "../state/research/library/pdfs"
+review_dir = "../state/research/library/reviews"
+library_manifest = "../state/research/library/manifest.jsonl"
+literature_reviewer = "claude"
+literature_validation = "quality"
+max_pdf_chars = 180000
+lookback_days = 30
+max_findings = 35
+topics = [
+  "heterogeneous UAV UGV robot swarms",
+  "robot interoperability ROS 2 DDS MAVLink PX4 ArduPilot",
+  "decentralized collaborative and swarm SLAM",
+  "federated multi-agent reinforcement learning FMARL",
+  "heterogeneous MARL and capability-based task allocation",
+  "secure swarm coordination Byzantine resilience and zero trust",
+  "mesh delay-tolerant and multi-link robotic communications",
+  "cooperative UAV UGV perception mapping and navigation",
+  "sim-to-real and field validation of autonomous fleets",
+]

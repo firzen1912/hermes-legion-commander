@@ -1,0 +1,14 @@
+[supervisor]
+profile = "legion-supervisor"
+worker_profiles = ["legion-worker-a", "legion-worker-b"]
+hermes_executable = "hermes"
+commander_executable = "hermes-legion-commander"
+repo_root = "/absolute/path/to/hermes-legion-commander"
+default_mode = "alternating"
+
+# Hermes is the operator-facing agent. Codex CLI and Claude Code remain the
+# native workers launched by Hermes Legion Commander.
+
+# The two worker profiles are intentionally role-neutral. The supervisor assigns
+# each task's role, native_runtime (codex or claude), permission, model, effort,
+# workspace, context, and handoff contract.
