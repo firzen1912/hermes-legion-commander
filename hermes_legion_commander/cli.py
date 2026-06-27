@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import checkpoint_competition, doctor, github_health, model_council, repo_graph, supervisor, token_cost
+from . import checkpoint_competition, doctor, github_health, model_council, repo_graph, supervisor, token_cost, workflow_governance
 
 
 def parser() -> argparse.ArgumentParser:
@@ -24,6 +24,7 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("repo-graph", help="Build/query the local repository knowledge graph")
     sub.add_parser("token-cost", help="Estimate prompt tokens and shadow API-equivalent cost offline")
     sub.add_parser("github-health", help="Gate a patch on GitHub Actions workflow success and Dependabot alerts")
+    sub.add_parser("governance", help="Risk escalation, PR readiness, regression memory, branch cleanup, and dashboard")
     # Deprecated legacy aliases (kept working): council -> collaborating, checkpoint -> competing.
     sub.add_parser("council", help=argparse.SUPPRESS)
     sub.add_parser("checkpoint", help=argparse.SUPPRESS)
@@ -56,6 +57,8 @@ def main(argv: list[str] | None = None) -> int:
         return token_cost.cli_main(args)
     if workflow == "github-health":
         return github_health.cli_main(args)
+    if workflow == "governance":
+        return workflow_governance.cli_main(args)
     parser().error(f"unknown workflow: {workflow}")
     return 2
 

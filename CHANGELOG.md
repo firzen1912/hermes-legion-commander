@@ -1,3 +1,16 @@
+## 1.7.4 — Governance, PR readiness, and review dashboard
+
+- Added a workflow governance layer that refreshes before every worker prompt and writes `GOVERNANCE.md`, merge-readiness JSON/Markdown, changed-file inventory, and a static dashboard.
+- Added risk escalation rules that recommend `competing` / final verification for security, safety, release, dependency, workflow, and evidence-sensitive changes.
+- Added file-ownership and specialist-routing hints with optional TOML overrides.
+- Added patch-budget checks for file count, changed lines, security files, evidence files, and workflow files.
+- Added evidence-diff explanations to distinguish signatures/key churn, run-log churn, structured release evidence, and human-readable evidence.
+- Added no-regression memory with `governance memory-add`; rules also flow into `prompt-lessons.md`.
+- Added local/CI parity warnings for Windows-vs-Linux, line endings, path separator, and Python-version mismatches.
+- Added PR merge-readiness scoring plus automatic PR review-comment posting when Commander opens a PR.
+- Added `governance branches list/cleanup` for Legion Commander branch garbage collection.
+- Added `governance check` and dashboard generation for manual health inspection.
+
 # Changelog
 
 ## 1.7.2 — Anchored truth prompt preflight
@@ -362,7 +375,7 @@ Fixes:
 - Archived migration from the previous `LegionCommander` installation/state root.
 - Retained UTF-8 subprocess transport on Windows.
 
-## v0.7.0 - tokenpreflight
+## v0.8.6-6tokenpreflight
 
 - Added offline prompt token preflight before Codex CLI and Claude Code execution.
 - Added subscription/OAuth auth-mode inference for ChatGPT/Codex and Claude Code.

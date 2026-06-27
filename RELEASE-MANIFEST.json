@@ -1,38 +1,40 @@
 {
-  "artifacts": [
-    {
-      "bytes": 151284,
-      "path": "dist/hermes_legion_commander-1.7.2-py3-none-any.whl",
-      "sha256": "0f60f99cb4bca0796e45e610c05c5646992dbe9286932b6f1eb1dfd706da440a"
-    }
-  ],
-  "built_at": "2026-06-27T20:52:33.032361+00:00",
-  "patches": [
-    "usage-learning",
-    "scope-aware-routing",
-    "repo-graph",
-    "graphify-kg",
-    "cross-validation",
-    "token-preflight-shadow-cost",
-    "explicit-roadmap-selection",
-    "multi-provider-multi-model",
-    "adversarial-evaluator",
-    "goal-stop-condition",
-    "loop-scheduling",
-    "subagent-delegation",
-    "prompt-effectiveness-metrics",
-    "three-named-modes",
-    "rapid-alternate-handoff",
-    "mode-command-rename",
-    "configurable-subagent-cap",
-    "github-health-gate",
-    "anchored-truth-preflight"
-  ],
-  "release": "1.7.2",
-  "validation": {
-    "compileall": "passed",
-    "pytest": "170 passed",
-    "wheel_import": "passed"
-  },
-  "version": "1.7.2"
+    "artifacts":  [
+                      {
+                          "bytes":  169526,
+                          "path":  "dist/hermes_legion_commander-1.7.4-py3-none-any.whl",
+                          "sha256":  "f75c5881d217067dfbcd7399e61e299e566e51363392abe646c79037ba159232"
+                      }
+                  ],
+    "built_at":  "2026-06-27T22:18:43.978315+00:00",
+    "patches":  [
+                    "usage-learning",
+                    "scope-aware-routing",
+                    "repo-graph",
+                    "graphify-kg",
+                    "cross-validation",
+                    "token-preflight-shadow-cost",
+                    "explicit-roadmap-selection",
+                    "multi-provider-multi-model",
+                    "adversarial-evaluator",
+                    "goal-stop-condition",
+                    "loop-scheduling",
+                    "subagent-delegation",
+                    "prompt-effectiveness-metrics",
+                    "three-named-modes",
+                    "rapid-alternate-handoff",
+                    "mode-command-rename",
+                    "configurable-subagent-cap",
+                    "github-health-gate",
+                    "anchored-truth-preflight",
+                    "branch-pr-workflow",
+                    "workflow-governance-pr-readiness-dashboard"
+                ],
+    "release":  "1.7.4",
+    "validation":  {
+                       "compileall":  "passed",
+                       "pytest":  "179 passed in split runs",
+                       "wheel_import":  "passed"
+                   },
+    "version":  "1.7.4"
 }

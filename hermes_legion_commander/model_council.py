@@ -295,15 +295,33 @@ def _finalize_pr_workflow(
         return payload
     commit = commit_all_if_changed(worktree, message=title)
     payload["commit"] = commit
+    governance_report = None
+    governance_comment = ""
+    try:
+        from .workflow_governance import refresh_governance, render_pr_comment
+        governance_report = refresh_governance(
+            run_dir / "shared-context",
+            worktree,
+            task_prompt=summary,
+            base_ref=f"{options.remote}/{options.base_branch}",
+        )
+        governance_comment = render_pr_comment(governance_report)
+        payload["governance"] = {
+            "risk": governance_report.get("risk"),
+            "merge_readiness": governance_report.get("merge_readiness"),
+            "artifacts": str(run_dir / "shared-context" / "governance"),
+        }
+    except Exception as exc:  # pragma: no cover - PR governance enriches review, but should not mask completed work
+        payload["governance_error"] = str(exc)
     body = build_pr_body(
         mode=mode,
         branch=branch,
         base_branch=options.base_branch,
         run_id=run_id,
         summary=summary,
-        validation=validation,
-        artifacts=artifacts or [],
-        extra=extra or {},
+        validation=validation + ("\n\n" + governance_comment if governance_comment else ""),
+        artifacts=[*(artifacts or []), str(run_dir / "shared-context" / "governance" / "merge-readiness.md"), str(run_dir / "shared-context" / "dashboard" / "index.html")],
+        extra={**(extra or {}), "governance": payload.get("governance")},
     )
     payload["title"] = options.title or title
     payload["body"] = body
@@ -320,6 +338,17 @@ def _finalize_pr_workflow(
             gh_path=options.gh,
             remote=options.remote,
         )
+        try:
+            if governance_report is not None:
+                from .workflow_governance import post_pr_comment, render_pr_comment
+                payload["review_comment"] = post_pr_comment(
+                    worktree,
+                    branch_or_pr=branch,
+                    body=render_pr_comment(governance_report),
+                    gh_path=options.gh,
+                )
+        except Exception as exc:  # pragma: no cover - comments are review aids
+            payload["review_comment_error"] = str(exc)
     write_pr_artifacts(run_dir, payload)
     return payload
 

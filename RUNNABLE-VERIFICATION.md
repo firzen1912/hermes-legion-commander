@@ -1,29 +1,31 @@
-# Runnable verification — v1.7.0
+# Runnable verification — v1.7.4
 
-Hermes Legion Commander v1.7.0 is the first stable release. It carries the
-supervisor/worker prompt contracts refined from manual Codex/Claude roadmap runs
-and was promoted to GA after a security and capability review.
+Hermes Legion Commander v1.7.4 adds integrated workflow governance for autonomous-but-reviewable model work.
 
-## Prompt improvements verified
+## Governance features verified
 
-- Generic worker SOUL includes version-boundary discipline.
-- Dispatch contracts include commit policy, quota watermark, stop policy, generated-artifact policy, and host-side evidence policy.
-- Version implementation, polish, security, and validation prompts include the roadmap execution contract.
-- Supervisor goal contract includes quota and handoff policy.
-- Host-side physical/HIL/field/audit/publication gates remain non-machine-awarded.
+- Risk escalation recommendations before worker prompts.
+- PR auto-triage and merge-readiness scoring.
+- Review-comment rendering/posting support through GitHub CLI.
+- File ownership and specialist-routing hints with TOML override support.
+- Patch-budget checks.
+- Evidence-diff explanation.
+- No-regression memory injection.
+- Local/CI parity warnings.
+- Legion Commander branch listing and cleanup.
+- Static dashboard generation.
 
 ## Validation
 
-- 161 automated tests passed.
 - `compileall` clean across the package.
+- 179 tests passed in split pytest runs.
 - Wheel built successfully.
 - Wheel installed in a fresh virtual environment.
-- Installed package reported version `1.7.0`.
-- `show-worker-soul` exposes `Version-boundary discipline`, `HANDOFF:`, and `Host-side evidence boundary`.
-- `show-goal-contract` exposes `Quota and handoff policy`.
+- Installed package reported version `1.7.4`.
+- CLI help exposes the `governance` workflow.
 
 ## Wheel
 
-`dist/hermes_legion_commander-1.7.0-py3-none-any.whl`
+`dist/hermes_legion_commander-1.7.4-py3-none-any.whl`
 
-SHA-256: `437f73388c7fb15cced8d87172e331d48665d4e24f0c18d1effbb4fa6a75060f`
+SHA-256: `e2bf9b3a9b3ccfd08be529d4cca08610c4b252c564b15fa91bd2942b924eb755`

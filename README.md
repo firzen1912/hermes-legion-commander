@@ -49,6 +49,23 @@ shared-context/
 
 Every worker gets an immutable stage snapshot under `worker-context/`. The supervisor hashes the snapshot before and after execution and rejects unexpected mutation. Competitive cross-review and final-verification stages are also checked for unintended reviewed-worktree mutation.
 
+
+## Workflow governance
+
+Every worker prompt now includes `GOVERNANCE.md` after anchored truth. The governance preflight classifies changed-file risk, recommends mode escalation, applies patch-budget checks, explains evidence diffs, injects regression memory, warns about local/CI parity issues, and writes a dashboard under `shared-context/dashboard/index.html`.
+
+Manual commands:
+
+```powershell
+hermes-legion-commander governance check --repo C:\path\to\repo --base-ref origin/dev
+hermes-legion-commander governance comment --repo C:\path\to\repo --pr 12
+hermes-legion-commander governance branches list --repo C:\path\to\repo
+hermes-legion-commander governance branches cleanup --repo C:\path\to\repo --older-than-days 14
+hermes-legion-commander governance memory-add --context-dir C:\path\to\repo\shared-context --title "CRLF evidence" --rule "Normalize before hashing/signing text artifacts."
+```
+
+When `--open-pr` is used, Commander adds merge-readiness information to the PR body and attempts to post a concise review comment.
+
 ## Safety invariants
 
 Hermes Legion Commander never automatically merges, pushes, deploys, tags, publishes, releases, changes credentials, or operates hardware. Dangerous-intent, massive-diff, and roadmap-update gates require explicit human approval.
@@ -80,7 +97,7 @@ hermes-legion-commander/
 │   ├── repair-hermes-legion-commander.ps1
 │   └── repair-hermes-legion-commander.sh
 ├── tests/
-└── dist/hermes_legion_commander-1.7.0-py3-none-any.whl
+└── dist/hermes_legion_commander-1.7.4-py3-none-any.whl
 ```
 
 ## Prerequisites
@@ -103,8 +120,8 @@ For Windows development, WSL2 is the most predictable environment for Hermes and
 Set-ExecutionPolicy -Scope Process Bypass
 
 .\scripts\install-hermes-legion-commander.ps1 `
-  -WheelPath ".\dist\hermes_legion_commander-1.7.0-py3-none-any.whl" `
-  -ExpectedVersion "1.7.0" `
+  -WheelPath ".\dist\hermes_legion_commander-1.7.4-py3-none-any.whl" `
+  -ExpectedVersion "1.7.4" `
   -RecreateEnvironment `
   -AddScriptsToUserPath
 ```
@@ -133,7 +150,7 @@ The old `legion-commander` executable is retained as a deprecated compatibility 
 chmod +x scripts/install-hermes-legion-commander.sh
 
 ./scripts/install-hermes-legion-commander.sh \
-  --wheel ./dist/hermes_legion_commander-1.7.0-py3-none-any.whl \
+  --wheel ./dist/hermes_legion_commander-1.7.4-py3-none-any.whl \
   --expected-version 1.7.0 \
   --recreate-environment \
   --add-scripts-to-path

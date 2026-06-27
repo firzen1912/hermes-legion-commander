@@ -1,8 +1,7 @@
 # Prompt improvements from manual roadmap runs
 
-This document captures prompt rules extracted from successful manual
-target-repository Codex/Claude runs and converts them into reusable Hermes
-Legion Commander contracts.
+This document captures prompt rules extracted from successful manual target-repository Codex/Claude runs and converts them into reusable Hermes Legion Commander
+contracts.
 
 ## Extracted patterns
 

@@ -373,6 +373,19 @@ def _finalize_competition_pr(
     title = options.title or f"Legion Commander competitive v{vr.start}-v{vr.end}"
     try:
         commit = commit_all_if_changed(worktree, message=title)
+        governance_report = None
+        governance_comment = ""
+        try:
+            from .workflow_governance import refresh_governance, render_pr_comment
+            governance_report = refresh_governance(
+                root / "shared-context",
+                worktree,
+                task_prompt=f"competitive convergence v{vr.start}-v{vr.end}",
+                base_ref=f"{options.remote}/{options.base_branch}",
+            )
+            governance_comment = render_pr_comment(governance_report)
+        except Exception as exc:  # pragma: no cover - PR governance enriches review, but should not mask completed work
+            governance_comment = f"\n\nGovernance enrichment failed: `{exc}`"
         body = build_pr_body(
             mode="competitive",
             branch=branch,
@@ -389,6 +402,7 @@ def _finalize_competition_pr(
                 f"- Cross-validation artifacts: `{root / 'cross-validation-summary.json'}`\n"
                 f"- Converged result: `{root / 'converged-result.json'}`\n"
                 f"- Final verification: `{root / 'final-verification-summary.json'}`"
+                + ("\n\n" + governance_comment if governance_comment else "")
             ),
             artifacts=[
                 str(root / "manifest.json"),
@@ -396,8 +410,10 @@ def _finalize_competition_pr(
                 str(root / "cross-validation-summary.json"),
                 str(root / "converged-result.json"),
                 str(root / "final-verification-summary.json"),
+                str(root / "shared-context" / "governance" / "merge-readiness.md"),
+                str(root / "shared-context" / "dashboard" / "index.html"),
             ],
-            extra={"range_id": vr.key, "no_wait": no_wait},
+            extra={"range_id": vr.key, "no_wait": no_wait, "governance": {"risk": governance_report.get("risk"), "merge_readiness": governance_report.get("merge_readiness")} if governance_report else None},
         )
         payload: dict[str, Any] = {
             "enabled": True,
@@ -418,6 +434,14 @@ def _finalize_competition_pr(
                 worktree, branch=branch, base_branch=options.base_branch, title=title,
                 body=body, draft=options.draft, gh_path=options.gh, remote=options.remote,
             )
+            try:
+                if governance_report is not None:
+                    from .workflow_governance import post_pr_comment, render_pr_comment
+                    payload["review_comment"] = post_pr_comment(
+                        worktree, branch_or_pr=branch, body=render_pr_comment(governance_report), gh_path=options.gh
+                    )
+            except Exception as exc:  # pragma: no cover - comment failures must not invalidate completed convergence
+                payload["review_comment_error"] = str(exc)
         write_pr_artifacts(root, payload)
         return payload
     except PRWorkflowError as exc:

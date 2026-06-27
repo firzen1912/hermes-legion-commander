@@ -1357,9 +1357,14 @@ def build_prompt_with_shared_context(
         refresh_anchored_truth(context_dir, cwd, task_prompt=prompt)
     except Exception as exc:  # pragma: no cover - truth refresh should degrade to an explicit error artifact, not block execution
         atomic_json(context_dir / "anchored-truth-error.json", {"error": str(exc), "updated_at": dt.datetime.now(UTC).isoformat()})
+    try:
+        from .workflow_governance import refresh_governance
+        refresh_governance(context_dir, cwd, task_prompt=prompt)
+    except Exception as exc:  # pragma: no cover - governance is a prompt aid; record explicit degradation
+        atomic_json(context_dir / "governance-error.json", {"error": str(exc), "updated_at": dt.datetime.now(UTC).isoformat()})
     refresh_shared_memory(context_dir)
     blocks: list[str] = []
-    for name in ("ANCHORED_TRUTH.md", "CONTEXT.md", "campaign-brief.md", "scope-routing-summary.md", "prompt-cost-summary.md", "prompt-lessons.md", "repo-context-pack.md", "repo-map/REPO_MAP.md", "shared-memory.md"):
+    for name in ("ANCHORED_TRUTH.md", "GOVERNANCE.md", "CONTEXT.md", "campaign-brief.md", "scope-routing-summary.md", "prompt-cost-summary.md", "prompt-lessons.md", "repo-context-pack.md", "repo-map/REPO_MAP.md", "shared-memory.md"):
         path = context_dir / name
         if path.is_file():
             blocks.append(f"## {name}\n\n{path.read_text(encoding='utf-8')}")
