@@ -31,6 +31,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from .config_toml import loads as loads_config_toml
+except ImportError:  # Support direct file loading in isolated validation fixtures.
+    from hermes_legion_commander.config_toml import loads as loads_config_toml
+
+try:
     from .roadmap import (
         campaign_versions,
         extract_version_range,
@@ -557,7 +562,7 @@ def _load_role_matrix(raw: dict[str, Any], agents: dict[str, Agent]) -> dict[str
 
 
 def load_config(path: Path, repo_override: Path | None = None) -> Config:
-    raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+    raw = loads_config_toml(path.read_text(encoding="utf-8-sig"))
     base = path.parent
     root = raw.get("competition")
     agents_raw = raw.get("agents")

@@ -52,9 +52,8 @@ def test_patch_budget_and_evidence_explainer() -> None:
 
 def test_refresh_governance_writes_artifacts(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
-    (repo / "Target project").mkdir()
-    (repo / "Target project" / "security").mkdir(parents=True)
-    (repo / "Target project" / "security" / "keyring.py").write_text("# change\n", encoding="utf-8")
+    (repo / "src" / "security").mkdir(parents=True)
+    (repo / "src" / "security" / "keyring.py").write_text("# change\n", encoding="utf-8")
     context = tmp_path / "ctx"
     report = wg.refresh_governance(context, repo, include_github=False)
     assert report["risk"]["recommended_mode"] == "competing"

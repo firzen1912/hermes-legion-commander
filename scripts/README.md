@@ -4,5 +4,6 @@
 - `setup-hermes-supervisor.ps1` / `.sh`: create or repair `legion-supervisor` plus the role-neutral `legion-worker-a` and `legion-worker-b` profiles, SOUL files, and skills.
 - `reset-hermes-legion-commander.ps1` / `.sh`: archive previous state and configs, reinstall, recreate clean council/checkpoint configs, configure the supervisor, and run zero-model checks.
 - `repair-hermes-legion-commander.ps1` / `.sh`: verify or reinstall the package, native worker CLIs, supervisor profile, configs, and roadmap preflight.
+- `test-local.ps1`: create or reuse `state/test-venv`, install pytest when needed, pin temp files under `state/`, and run the test suite without relying on global PATH.
 
 The scripts never delete the target repository. Reset archives old state before clearing it.

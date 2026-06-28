@@ -37,6 +37,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from .config_toml import loads as loads_config_toml
+except ImportError:  # Support direct file loading in isolated validation fixtures.
+    from hermes_legion_commander.config_toml import loads as loads_config_toml
+
+try:
     from .pr_workflow import (
         PRWorkflowOptions,
         PRWorkflowError,
@@ -383,7 +388,7 @@ DEFAULT_ROLES = {
 
 
 def load_config(path: Path) -> Config:
-    raw = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+    raw = loads_config_toml(path.read_text(encoding="utf-8-sig"))
     base = path.parent
     root = raw.get("council")
     agents_raw = raw.get("agents")

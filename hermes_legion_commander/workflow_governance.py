@@ -127,7 +127,9 @@ def git(repo: Path, *args: str, timeout: int = 60) -> str:
 
 def git_ok(repo: Path, *args: str, timeout: int = 60) -> tuple[bool, str]:
     cp = _run(["git", *args], cwd=repo, timeout=timeout)
-    return cp.returncode == 0, (cp.stdout or cp.stderr).strip()
+    if cp.returncode == 0:
+        return True, cp.stdout.strip()
+    return False, (cp.stderr or cp.stdout).strip()
 
 
 def _safe_rel(path: str) -> str:

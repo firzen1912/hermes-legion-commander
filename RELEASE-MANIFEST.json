@@ -1,12 +1,12 @@
 {
     "artifacts":  [
                       {
-                          "bytes":  169526,
+                          "bytes":  170972,
                           "path":  "dist/hermes_legion_commander-1.7.4-py3-none-any.whl",
-                          "sha256":  "f75c5881d217067dfbcd7399e61e299e566e51363392abe646c79037ba159232"
+                          "sha256":  "6a0976fbcbec181a4623b27b701803392909da080ae1808a6755d555d0960593"
                       }
                   ],
-    "built_at":  "2026-06-27T22:18:43.978315+00:00",
+    "built_at":  "2026-06-28T00:17:51.3503996Z",
     "patches":  [
                     "usage-learning",
                     "scope-aware-routing",
@@ -33,7 +33,7 @@
     "release":  "1.7.4",
     "validation":  {
                        "compileall":  "passed",
-                       "pytest":  "179 passed in split runs",
+                       "pytest":  "179 passed in 80.14s",
                        "wheel_import":  "passed"
                    },
     "version":  "1.7.4"

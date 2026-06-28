@@ -1,1 +1,1 @@
-f75c5881d217067dfbcd7399e61e299e566e51363392abe646c79037ba159232  dist/hermes_legion_commander-1.7.4-py3-none-any.whl
+6a0976fbcbec181a4623b27b701803392909da080ae1808a6755d555d0960593  dist/hermes_legion_commander-1.7.4-py3-none-any.whl

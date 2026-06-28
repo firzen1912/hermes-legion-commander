@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +45,13 @@ class CheckResult:
         }
 
 
+def _portable_command(command: tuple[str, ...]) -> list[str]:
+    if os.name == "nt" and len(command) == 1 and command[0] in {"true", "false"}:
+        code = "0" if command[0] == "true" else "1"
+        return [sys.executable, "-c", f"raise SystemExit({code})"]
+    return list(command)
+
+
 def run_deterministic_checks(
     repo: Path,
     checks: tuple[tuple[str, ...], ...],
@@ -61,7 +70,7 @@ def run_deterministic_checks(
             continue
         try:
             cp = subprocess.run(
-                list(command),
+                _portable_command(command),
                 cwd=repo,
                 text=True,
                 capture_output=True,

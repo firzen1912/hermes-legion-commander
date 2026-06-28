@@ -123,7 +123,7 @@ QUALITY_STATUSES = ("PASS", "BLOCKED", "NEEDS_HUMAN", "RUNNING", "QUOTA_PAUSED",
 
 def atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+    tmp = path.with_name(f".tmp-{os.getpid()}-{uuid.uuid4().hex[:12]}")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
 
@@ -1305,10 +1305,19 @@ def create_worker_context_snapshot(stage_dir: Path, canonical_context: Path) -> 
     if snapshot.exists():
         _make_tree_writable(snapshot)
         shutil.rmtree(snapshot)
+
+    def ignore_worker_context_entries(directory: str, names: list[str]) -> set[str]:
+        ignored = {name for name in names if name.endswith(".tmp") or (name.startswith(".") and name.endswith(".tmp"))}
+        if Path(directory).name == "repo-map":
+            ignored.add("cache")
+        if Path(directory).name == "artifacts":
+            ignored.add("prompts")
+        return ignored
+
     shutil.copytree(
         canonical_context,
         snapshot,
-        ignore=shutil.ignore_patterns("*.tmp", ".*.tmp"),
+        ignore=ignore_worker_context_entries,
     )
     return snapshot
 
@@ -1611,10 +1620,13 @@ def record_stage_event(
     context_dir = context_dir_for(stage_dir)
     (context_dir / "events").mkdir(parents=True, exist_ok=True)
     (context_dir / "artifacts").mkdir(parents=True, exist_ok=True)
-    completed_at = dt.datetime.now(UTC).isoformat()
+    completed = dt.datetime.now(UTC)
+    completed_at = completed.isoformat()
     stage = str(stage_dir.relative_to(find_run_root(stage_dir)))
-    event_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", f"{completed_at}-{stage}-{getattr(agent, 'name', '')}")
-    event_id = event_id.strip("-")[:180]
+    raw_event_id = f"{completed_at}-{stage}-{getattr(agent, 'name', '')}"
+    agent_slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(getattr(agent, "name", "") or "agent")).strip("-")[:16]
+    digest = hashlib.sha256(raw_event_id.encode("utf-8", errors="replace")).hexdigest()[:12]
+    event_id = f"{completed.strftime('%Y%m%dT%H%M%S')}-{agent_slug or 'agent'}-{digest}"
     artifact = context_dir / "artifacts" / f"{event_id}.md"
     atomic_write(artifact, normalized_output.rstrip() + "\n")
     prompt_artifact = None
