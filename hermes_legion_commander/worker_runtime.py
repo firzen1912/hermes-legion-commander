@@ -1371,31 +1371,46 @@ def build_prompt_with_shared_context(
         refresh_governance(context_dir, cwd, task_prompt=prompt)
     except Exception as exc:  # pragma: no cover - governance is a prompt aid; record explicit degradation
         atomic_json(context_dir / "governance-error.json", {"error": str(exc), "updated_at": dt.datetime.now(UTC).isoformat()})
+    try:
+        from .routing_context import refresh_routing_context
+        refresh_routing_context(context_dir, cwd, task_prompt=prompt)
+    except Exception as exc:  # pragma: no cover - router context is a prompt aid; record explicit degradation
+        atomic_json(context_dir / "routing-context-error.json", {"error": str(exc), "updated_at": dt.datetime.now(UTC).isoformat()})
     refresh_shared_memory(context_dir)
     blocks: list[str] = []
-    for name in ("ANCHORED_TRUTH.md", "GOVERNANCE.md", "CONTEXT.md", "campaign-brief.md", "scope-routing-summary.md", "prompt-cost-summary.md", "prompt-lessons.md", "repo-context-pack.md", "repo-map/REPO_MAP.md", "shared-memory.md"):
+    priority_block_limits = {
+        "ANCHORED_TRUTH.md": 6000,
+        "GOVERNANCE.md": 6000,
+        "ROUTING_CONTEXT.md": 6000,
+    }
+    for name in ("ANCHORED_TRUTH.md", "GOVERNANCE.md", "ROUTING_CONTEXT.md", "CONTEXT.md", "campaign-brief.md", "scope-routing-summary.md", "prompt-cost-summary.md", "prompt-lessons.md", "repo-context-pack.md", "repo-map/REPO_MAP.md", "shared-memory.md"):
         path = context_dir / name
         if path.is_file():
-            blocks.append(f"## {name}\n\n{path.read_text(encoding='utf-8')}")
+            text = path.read_text(encoding="utf-8")
+            limit = priority_block_limits.get(name)
+            if limit is not None and len(text) > limit:
+                text = text[:limit].rstrip() + "\n\n[High-priority context excerpt truncated; full file is available in the shared context directory.]"
+            blocks.append(f"## {name}\n\n{text}")
     if include_git_snapshot:
         snapshot = json.dumps(git_snapshot(cwd), indent=2, sort_keys=True)
         blocks.append(f"## Current repository snapshot\n\n```json\n{snapshot}\n```")
-    context = "\n\n".join(blocks)
-    if len(context) > context_budget:
-        context = context[:context_budget] + "\n\n[Shared context excerpt truncated; full files are available in the shared context directory.]"
     header = (
         "# HERMES LEGION COMMANDER SHARED CONTEXT\n\n"
         f"Canonical context directory: {context_dir}\n"
         "Both native workers receive this same provider-neutral memory. Read it before acting.\n"
         "Do not modify the context directory. Work only in the current isolated Git worktree.\n\n"
     )
-    combined = header + context + "\n\n# CURRENT STAGE TASK\n\n" + prompt
-    if len(combined) > max_prompt_chars:
-        task_budget = max(4000, max_prompt_chars - len(header) - min(len(context), context_budget) - 64)
-        combined = header + context + "\n\n# CURRENT STAGE TASK\n\n" + prompt[:task_budget]
-        if len(prompt) > task_budget:
-            combined += "\n\n[Current task truncated by configured prompt limit.]"
-    return combined[:max_prompt_chars]
+    task_marker = "\n\n# CURRENT STAGE TASK\n\n"
+    task_reserve = min(len(prompt), 4000)
+    effective_context_budget = min(context_budget, max(0, max_prompt_chars - len(header) - len(task_marker) - task_reserve - 128))
+    context = "\n\n".join(blocks)
+    if len(context) > effective_context_budget:
+        context = context[:effective_context_budget].rstrip() + "\n\n[Shared context excerpt truncated; full files are available in the shared context directory.]"
+    task_budget = max(0, max_prompt_chars - len(header) - len(context) - len(task_marker))
+    task = prompt[:task_budget]
+    if len(prompt) > task_budget:
+        task = task.rstrip() + "\n\n[Current task truncated by configured prompt limit.]"
+    return header + context + task_marker + task
 
 
 def render_command(

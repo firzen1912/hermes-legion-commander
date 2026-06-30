@@ -49,6 +49,31 @@ shared-context/
 
 Every worker gets an immutable stage snapshot under `worker-context/`. The supervisor hashes the snapshot before and after execution and rejects unexpected mutation. Competitive cross-review and final-verification stages are also checked for unintended reviewed-worktree mutation.
 
+## Routing context
+
+Commander prepares a routing context before every worker prompt. The runtime
+pool is two locally authenticated CLI workers: Anthropic Claude Code (`claude`)
+and OpenAI Codex CLI (`codex`). There is no remote provider registry, API key
+gateway, or HTTP endpoint; each CLI authenticates through its own native login,
+and availability is detected from PATH the same way `doctor` does.
+
+Manual commands:
+
+```powershell
+hermes-legion-commander doctor
+hermes-legion-commander routing plan --repo C:\path\to\repo --task "Implement the next roadmap item"
+hermes-legion-commander routing plan --repo C:\path\to\repo --check-auth
+hermes-legion-commander routing train --context-dir C:\path\to\repo\shared-context
+hermes-legion-commander routing config-example
+```
+
+Every worker prompt now includes `ROUTING_CONTEXT.md` after `GOVERNANCE.md`, so
+Codex and Claude can see task classification, recommended mode, role assignment,
+runtime availability, and required checks before implementation. High-risk
+security, release, CI/workflow, dependency-manifest, and evidence changes
+recommend competitive verification. A routing refresh failure degrades to
+`shared-context/routing-context-error.json` and never blocks execution. See
+`docs/ROUTING_CONTEXT.md`.
 
 ## Workflow governance
 
