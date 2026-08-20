@@ -4,30 +4,45 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import checkpoint_competition, doctor, github_health, model_council, repo_graph, routing_context, supervisor, token_cost, workflow_governance
+from . import (
+    checkpoint_competition,
+    doctor,
+    github_health,
+    legion_cli,
+    model_council,
+    repo_graph,
+    routing_context,
+    skill_profile,
+    supervisor,
+    token_cost,
+    workflow_governance,
+)
 
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="hermes-legion-commander",
         description=(
-            "Hermes-supervised orchestration for Codex CLI and Claude Code in three modes: "
-            "collaborating (council), competing (convergence), and alternating (stop-at-version handoff)."
+            "Provider-agnostic multi-agent orchestration with arbitrary roles, dynamic team formation, "
+            "OAuth/API/native authentication, resource-aware executor scheduling, shared evidence, and campaign DAGs."
         ),
     )
     sub = p.add_subparsers(dest="workflow", required=True)
-    sub.add_parser("collaborating", help="Collaborative council: multiple roles per version, auto-continues the range")
-    sub.add_parser("competing", help="Competitive convergence: two candidates per version, judged and converged")
-    sub.add_parser("alternating", help="Rapid alternate: one worker implements one version, then stops and hands off to the other")
+    sub.add_parser("legion", help="Primary generic engine: plan/run arbitrary multi-provider role and campaign DAGs")
+    sub.add_parser("skills", help="Install/verify the reviewed shared skill baseline for every configured runtime")
+    # Compatibility presets. These remain available while their internals migrate
+    # onto the generic Legion primitives.
+    sub.add_parser("collaborating", help="Compatibility preset: collaborative council workflow")
+    sub.add_parser("competing", help="Compatibility preset: competitive convergence workflow")
+    sub.add_parser("alternating", help="Compatibility preset: sequential worker handoff workflow")
     sub.add_parser("supervisor", help="Configure or invoke the Hermes Agent supervisor")
     sub.add_parser("doctor", help="Verify tools, authentication, profiles, configs, repository, and roadmap")
     sub.add_parser("repo-graph", help="Build/query the local repository knowledge graph")
     sub.add_parser("token-cost", help="Estimate prompt tokens and shadow API-equivalent cost offline")
     sub.add_parser("github-health", help="Gate a patch on GitHub Actions workflow success and Dependabot alerts")
     sub.add_parser("governance", help="Risk escalation, PR readiness, regression memory, branch cleanup, and dashboard")
-    sub.add_parser("routing", help="Plan Claude+Codex routing from repo truth and telemetry")
-    sub.add_parser("router", help="Alias for routing plan/train helpers")
-    # Deprecated legacy aliases (kept working): council -> collaborating, checkpoint -> competing.
+    sub.add_parser("routing", help="Legacy routing-context helpers; prefer `legion plan` for generic executor routing")
+    sub.add_parser("router", help="Alias for legacy routing helpers")
     sub.add_parser("council", help=argparse.SUPPRESS)
     sub.add_parser("checkpoint", help=argparse.SUPPRESS)
     return p
@@ -39,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
         parser().print_help()
         return 0
     workflow = args.pop(0)
+    if workflow == "legion":
+        return legion_cli.cli_main(args)
+    if workflow == "skills":
+        return skill_profile.cli_main(args)
     if workflow in {"collaborating", "council"}:
         if workflow == "council":
             print("warning: 'council' is deprecated; use 'collaborating'", file=sys.stderr)
