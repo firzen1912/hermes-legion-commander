@@ -1,0 +1,111 @@
+name: Verified release build
+
+on:
+  push:
+    branches:
+      - "release/**"
+    paths:
+      - ".github/workflows/release-build.yml"
+      - "scripts/release_v2.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: "2.0.0"
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Prepare version and active release references
+        run: python scripts/release_v2.py prepare "$RELEASE_VERSION"
+
+      - name: Install release-build tooling
+        run: python -m pip install --upgrade pip build pytest
+
+      - name: Compile package
+        run: python -m compileall -q hermes_legion_commander
+
+      - name: Run source test suite
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q | tee .release-pytest.txt
+
+      - name: Build clean wheel
+        shell: bash
+        run: |
+          rm -rf build
+          rm -f dist/hermes_legion_commander-*.whl
+          python -m build --wheel
+          test -f "dist/hermes_legion_commander-${RELEASE_VERSION}-py3-none-any.whl"
+
+      - name: Verify wheel in fresh environment
+        shell: bash
+        run: |
+          python -m venv .release-venv
+          .release-venv/bin/python -m pip install --upgrade pip
+          .release-venv/bin/python -m pip install "dist/hermes_legion_commander-${RELEASE_VERSION}-py3-none-any.whl"
+          .release-venv/bin/python - <<'PY'
+          import importlib.metadata as md
+          import hermes_legion_commander
+          expected = "2.0.0"
+          assert md.version("hermes-legion-commander") == expected
+          assert hermes_legion_commander.__version__ == expected
+          print(f"verified installed version {expected}")
+          PY
+          .release-venv/bin/hermes-legion-commander --help >/dev/null
+          .release-venv/bin/hermes-legion-commander legion --help >/dev/null
+          .release-venv/bin/hermes-legion-commander gui --help >/dev/null
+
+      - name: Generate release evidence
+        run: >-
+          python scripts/release_v2.py finalize "$RELEASE_VERSION"
+          --pytest-output .release-pytest.txt
+          --source-commit "$GITHUB_SHA"
+
+      - name: Validate release diff
+        shell: bash
+        run: |
+          git diff --check
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          version = "2.0.0"
+          manifest = json.loads(Path("RELEASE-MANIFEST.json").read_text())
+          validation = json.loads(Path("VALIDATION.json").read_text())
+          assert manifest["version"] == version
+          assert validation["installed_version"] == version
+          assert Path(f"dist/hermes_legion_commander-{version}-py3-none-any.whl").is_file()
+          print("release evidence is internally consistent")
+          PY
+
+      - name: Commit verified release artifacts
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- pyproject.toml hermes_legion_commander/__init__.py README.md CHANGELOG.md
+          git add -- scripts/bootstrap-hermes-legion-commander.ps1 scripts/bootstrap-hermes-legion-commander.sh
+          git add -- scripts/install-hermes-legion-commander.ps1 scripts/install-hermes-legion-commander.sh
+          git add -- scripts/repair-hermes-legion-commander.ps1 scripts/repair-hermes-legion-commander.sh
+          git add -- scripts/reset-hermes-legion-commander.ps1 scripts/reset-hermes-legion-commander.sh scripts/README.md
+          git add -- RUNNABLE-VERIFICATION.md RELEASE-MANIFEST.json SHA256SUMS.txt VALIDATION.json
+          git add -A -- dist
+          if git diff --cached --quiet; then
+            echo "No release changes to commit"
+            exit 0
+          fi
+          git commit -m "build: publish verified Hermes Legion Commander v${RELEASE_VERSION}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
