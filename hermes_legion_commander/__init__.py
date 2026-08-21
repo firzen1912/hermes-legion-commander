@@ -1,6 +1,6 @@
 """Hermes Legion Commander package."""
 
-__version__ = "1.7.4"
+__version__ = "2.0.0"
 
 
 def _install_managed_account_loader() -> None:

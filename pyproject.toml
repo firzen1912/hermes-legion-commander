@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-legion-commander"
-version = "1.7.4"
-description = "Hermes-supervised multi-CLI council, competition, and alternating orchestrator"
+version = "2.0.0"
+description = "Repository-agnostic, provider-neutral multi-agent software-engineering orchestrator"
 requires-python = ">=3.11"
 
 [project.scripts]

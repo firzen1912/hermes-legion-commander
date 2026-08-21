@@ -1,4 +1,4 @@
-<#[.SYNOPSIS] Archive old state, reinstall v0.8.5, create fresh configs, and repair the Hermes supervisor. #>
+<#[.SYNOPSIS] Archive old state, reinstall v2.0.0, create fresh configs, and repair the Hermes supervisor. #>
 [CmdletBinding()]
 param(
   [string]$CommanderRepo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
@@ -36,10 +36,10 @@ foreach ($Name in @("model_council.local.toml","checkpoint_competition.local.tom
   $Path = Join-Path $ConfigDir $Name
   if (Test-Path $Path) { Copy-Item $Path (Join-Path $ArchiveRoot $Name) -Force; Remove-Item $Path -Force }
 }
-$Wheel = Join-Path $CommanderRepo "dist\hermes_legion_commander-0.8.5-py3-none-any.whl"
+$Wheel = Join-Path $CommanderRepo "dist\hermes_legion_commander-2.0.0-py3-none-any.whl"
 $Installer = Join-Path $CommanderRepo "scripts\install-hermes-legion-commander.ps1"
 if (-not $SkipInstall) {
-  & $Installer -WheelPath $Wheel -ExpectedVersion "0.8.5" -RecreateEnvironment -AddScriptsToUserPath
+  & $Installer -WheelPath $Wheel -ExpectedVersion "2.0.0" -RecreateEnvironment -AddScriptsToUserPath
   if ($LASTEXITCODE -ne 0) { throw "Installation failed" }
 }
 $Council = Join-Path $ConfigDir "model_council.local.toml"

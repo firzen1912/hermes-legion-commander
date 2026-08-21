@@ -152,6 +152,13 @@ State the concrete outcome.
 - API soft/hard budget:
 - Context/phase boundaries:
 
+## Quota and handoff policy
+- Available capacity is not authorization to consume it; preserve configured reserve, cooldown, and context boundaries.
+- Do not start a new version or work packet when the configured quota/context watermark or stop boundary has been reached.
+- If quota/context pressure appears mid-version, finish active version if feasible and safe, run its focused checks, persist the exact checkpoint/handoff, and then stop.
+- Never switch or rotate accounts merely to evade a provider quota, cooldown, entitlement, or authentication boundary.
+- Every quota pause must record changed/reviewed files, checks, resource events, unresolved work, and the exact next action.
+
 ## Acceptance criteria
 Use testable functional, security, quality, evidence, and integration statements.
 

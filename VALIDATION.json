@@ -1,5 +1,11 @@
 {
+  "cli_help": "passed",
   "compileall": "passed",
-  "pytest": "179 passed in split runs",
-  "wheel_import": "passed"
+  "installed_version": "2.0.0",
+  "pytest": "204 passed in 6.23s",
+  "source_commit": "1fa769b49e7df01ba40c57b58599237059e32466",
+  "version": "2.0.0",
+  "wheel_build": "passed",
+  "wheel_import": "passed",
+  "wheel_install": "passed"
 }

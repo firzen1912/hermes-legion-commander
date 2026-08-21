@@ -4,7 +4,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-}"
 EXE="$HOME/.local/share/hermes-legion-commander/venv/bin/hermes-legion-commander"
 if [[ ! -x "$EXE" ]]; then
-  "$ROOT/scripts/install-hermes-legion-commander.sh" --wheel "$ROOT/dist/hermes_legion_commander-0.8.5-py3-none-any.whl" --expected-version 0.8.5 --recreate-environment --add-scripts-to-path
+  "$ROOT/scripts/install-hermes-legion-commander.sh" --wheel "$ROOT/dist/hermes_legion_commander-2.0.0-py3-none-any.whl" --expected-version 2.0.0 --recreate-environment --add-scripts-to-path
 fi
 for command in hermes codex claude git; do command -v "$command" >/dev/null || { echo "Missing command: $command" >&2; exit 1; }; done
 "$EXE" supervisor --repo-root "$ROOT" setup --force

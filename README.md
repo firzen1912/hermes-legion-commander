@@ -20,7 +20,7 @@ Current `main` includes:
 - a provider-neutral repository-data egress safeguard;
 - legacy council/competition/alternating workflows and governance utilities.
 
-> **Release-state note:** `pyproject.toml`, `__version__`, and the checked-in wheel still identify the last packaged release as **1.7.4**. The `dist/hermes_legion_commander-1.7.4-py3-none-any.whl` artifact was built before the Legion v2, repository-safeguard, and multi-account GUI changes now present on `main`. To use the current architecture, install from source. The 1.7.4 release manifest remains historical release evidence, not proof that the post-release `main` features are in that wheel.
+> **Release status:** **2.0.0** is the current packaged release. The verified wheel is `dist/hermes_legion_commander-2.0.0-py3-none-any.whl`. Its SHA-256 and build/test evidence are recorded in `SHA256SUMS.txt`, `RELEASE-MANIFEST.json`, `VALIDATION.json`, and `RUNNABLE-VERIFICATION.md`.
 
 ## Architecture
 
@@ -147,7 +147,7 @@ Executor budgets support subscription allowance, API budgets, cooldowns, and par
 
 The generic doctrine also defines checkpoint-oriented development phases, cheap-to-expensive validation, bounded failed attempts, bounded long runs, and protected human actions. Repository-local instructions may make these constraints stricter.
 
-## Install current `main`
+## Install 2.0.0 / current `main`
 
 ### Prerequisites
 
@@ -172,6 +172,16 @@ Optional dependencies/tools:
 - Python `keyring` for storing API secrets in the OS credential store from the GUI;
 - `pipx` when the skill installer must install the reviewed Graphify version;
 - Hermes Agent when using the optional `supervisor` workflow.
+
+### Install the verified wheel
+
+After a release build has passed, install the checked-in artifact directly:
+
+```bash
+python -m pip install ./dist/hermes_legion_commander-2.0.0-py3-none-any.whl
+```
+
+For editable development from the current checkout, use the source instructions below.
 
 ### Linux / macOS
 

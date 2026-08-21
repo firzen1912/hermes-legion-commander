@@ -12,7 +12,7 @@ for dir in "$HOME/.local/share/legion-commander" "$HOME/.local/share/hermes-legi
   fi
 done
 rm -rf "$HOME/.local/share/hermes-legion-commander/state" "$HOME/.local/share/hermes-legion-commander/venv"
-"$ROOT/scripts/install-hermes-legion-commander.sh" --wheel "$ROOT/dist/hermes_legion_commander-0.8.5-py3-none-any.whl" --expected-version 0.8.5 --recreate-environment --add-scripts-to-path
+"$ROOT/scripts/install-hermes-legion-commander.sh" --wheel "$ROOT/dist/hermes_legion_commander-2.0.0-py3-none-any.whl" --expected-version 2.0.0 --recreate-environment --add-scripts-to-path
 cp "$ROOT/config/model_council.example.toml" "$ROOT/config/model_council.local.toml"
 cp "$ROOT/config/checkpoint_competition.example.toml" "$ROOT/config/checkpoint_competition.local.toml"
 python3 - "$ROOT/config/model_council.local.toml" "$ROOT/config/checkpoint_competition.local.toml" "$TARGET" <<'PY'
