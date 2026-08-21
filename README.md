@@ -1,811 +1,620 @@
 # Hermes Legion Commander
 
-Hermes Legion Commander is a repository-agnostic orchestration system for **Hermes Agent**, **Codex CLI**, and **Claude Code**.
+Hermes Legion Commander (HLC) is a **repository-agnostic, provider-neutral multi-agent software-engineering orchestrator**. It separates model/provider choice from authentication, runtime, account identity, agent role, and campaign topology so the same orchestration layer can use Codex, Claude, API-hosted models, local runtimes, or future adapters without hard-coding a provider into a job.
 
-Hermes is the operator-facing **harness operator**. Hermes Legion Commander is the deterministic execution engine. Codex CLI and Claude Code are the native workers selected per dispatch contract.
+The primary architecture on `main` is the generic **Legion v2** engine. The older `collaborating`, `competing`, and `alternating` workflows remain available as compatibility presets.
+
+## Current `main` status
+
+Current `main` includes:
+
+- provider/model/runtime/auth/executor separation;
+- OAuth, native CLI, and API-key-reference authentication;
+- multiple independent accounts per provider;
+- a localhost-only account/role GUI;
+- arbitrary user-defined or Commander-defined roles;
+- resource- and quota-aware executor selection;
+- arbitrary campaign DAGs and explicit human gates;
+- provider-diverse independent review preference;
+- a reviewed 86-skill baseline shared across executors;
+- a provider-neutral repository-data egress safeguard;
+- legacy council/competition/alternating workflows and governance utilities.
+
+> **Release-state note:** `pyproject.toml`, `__version__`, and the checked-in wheel still identify the last packaged release as **1.7.4**. The `dist/hermes_legion_commander-1.7.4-py3-none-any.whl` artifact was built before the Legion v2, repository-safeguard, and multi-account GUI changes now present on `main`. To use the current architecture, install from source. The 1.7.4 release manifest remains historical release evidence, not proof that the post-release `main` features are in that wheel.
 
 ## Architecture
 
-```text
-Hermes Agent profile: legion-supervisor
-├── generic Hermes profile: legion-worker-a
-├── generic Hermes profile: legion-worker-b
-└── hermes-legion-commander
-    ├── collaborating mode (council)
-    │   └── supervisor assigns each agent a role, runtime, permission, model, and effort; auto-continues the range
-    ├── competing mode (convergence)
-    │   ├── isolated candidate assignments
-    │   ├── opponent cross-validation and owner polish assignments
-    │   ├── cross-judging assignments
-    │   ├── convergence assignments in a third worktree
-    │   └── final read-only verification assignments
-    └── alternating mode (rapid alternate)
-        └── one worker implements one version, then stops and hands off to the other to continue
-```
-
-Codex and Claude do not share provider-private conversation history. Every run instead owns canonical provider-neutral memory:
+The generic orchestration model is:
 
 ```text
-shared-context/
-├── CONTEXT.md
-├── campaign-brief.md
-├── shared-memory.md
-├── stage-index.jsonl
-├── runtime.json
-├── learning-ledger.jsonl
-├── learning-summary.json
-├── prompt-lessons.md
-├── scope-routing-ledger.jsonl
-├── scope-routing-summary.md
-├── routing-decisions/
-├── repo-map/
-├── artifacts/
-│   ├── candidates/
-│   ├── cross-validation/
-│   ├── converged/
-│   └── final-verification/
-└── events/
+Provider
+  ↓
+Model
+  ↓
+Runtime / transport
+  ↓
+Authentication profile
+  ↓
+Executor (one schedulable account/runtime/model resource)
+  ↓
+Agent assignment
+  ↓
+Role contract
+  ↓
+Campaign DAG
 ```
 
-Every worker gets an immutable stage snapshot under `worker-context/`. The supervisor hashes the snapshot before and after execution and rejects unexpected mutation. Competitive cross-review and final-verification stages are also checked for unintended reviewed-worktree mutation.
+These layers are intentionally independent. A provider does not imply a role, and one provider does not imply one account.
 
-## Routing context
+For example:
 
-Commander prepares a routing context before every worker prompt. The runtime
-pool is two locally authenticated CLI workers: Anthropic Claude Code (`claude`)
-and OpenAI Codex CLI (`codex`). There is no remote provider registry, API key
-gateway, or HTTP endpoint; each CLI authenticates through its own native login,
-and availability is detected from PATH the same way `doctor` does.
+```text
+OpenAI
+├── Codex OAuth account A → executor: codex-simulation
+├── Codex OAuth account B → executor: codex-capability
+└── API project C         → executor: openai-overflow
 
-Manual commands:
+Anthropic
+├── Claude account A      → executor: claude-debt
+└── Claude account B      → executor: claude-review
+
+Moonshot / compatible API
+└── Kimi account          → executor: kimi-research
+
+Qwen / compatible API
+└── Qwen account          → executor: qwen-validation
+```
+
+The same executor may be assigned to different roles in different campaigns unless the configuration deliberately restricts it.
+
+## Core capabilities
+
+### Provider- and runtime-neutral execution
+
+`RuntimeAdapter` supports CLI, API, local, MCP-shim, and custom execution boundaries. `Executor` binds one model/runtime/authentication resource into a schedulable unit. The scheduler evaluates capabilities, skills, authentication kind, role restrictions, resource state, priority, provider preference, and account preference before dispatch.
+
+The built-in local account GUI currently provides presets for:
+
+- **Codex CLI**;
+- **Claude Code**;
+- **OpenAI-compatible chat APIs**;
+- **Anthropic Messages API**;
+- **custom CLI adapters**.
+
+Kimi, Qwen, and other services can use the OpenAI-compatible adapter when the selected endpoint exposes the compatible schema. They are not hard-coded into the role system.
+
+### Arbitrary roles and elastic teams
+
+Roles are data, not enums. A `RoleContract` can define:
+
+- objective and responsibilities;
+- required capabilities and skills;
+- allowed authentication kinds;
+- preferred or forbidden providers;
+- preferred, allowed, or forbidden executors;
+- required executor labels;
+- permissions;
+- acceptance criteria;
+- independence requirements;
+- minimum and maximum agent count.
+
+Team policy can be:
+
+```text
+user_defined
+commander_defined
+hybrid
+```
+
+`hybrid` keeps Commander-generated defaults while allowing user-supplied role contracts to replace or extend them.
+
+### Campaign DAGs
+
+The generic campaign engine supports these node kinds:
+
+```text
+agent
+review
+validation
+synthesis
+checkpoint
+human_gate
+```
+
+A campaign may provide its own DAG in configuration, or Commander can build a conservative fan-out/fan-in graph from planned assignments.
+
+Worker success is semantic, not just process-level. Stage output must contain an explicit:
+
+```text
+PASS
+BLOCKED
+NEEDS_HUMAN
+```
+
+A zero exit code without an explicit verdict is treated as `BLOCKED`.
+
+### Resource-aware scheduling
+
+Executor budgets support subscription allowance, API budgets, cooldowns, and parallelism limits. Current default resource thresholds include:
+
+| Boundary | Default |
+| --- | ---: |
+| Protected subscription reserve | 25% |
+| No new unattended work at or below | 35% remaining |
+| Session checkpoint | 4 percentage points consumed |
+| Session hard stop | 5 percentage points consumed |
+| Daily unattended maximum | 10 percentage points |
+
+The generic doctrine also defines checkpoint-oriented development phases, cheap-to-expensive validation, bounded failed attempts, bounded long runs, and protected human actions. Repository-local instructions may make these constraints stricter.
+
+## Install current `main`
+
+### Prerequisites
+
+Required for the Python package:
+
+```text
+Python 3.11+
+git
+```
+
+Install only the model runtimes you actually intend to use, for example:
+
+```text
+codex
+claude
+```
+
+API-only or local/custom deployments do not require both CLIs.
+
+Optional dependencies/tools:
+
+- Python `keyring` for storing API secrets in the OS credential store from the GUI;
+- `pipx` when the skill installer must install the reviewed Graphify version;
+- Hermes Agent when using the optional `supervisor` workflow.
+
+### Linux / macOS
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+### Windows PowerShell
 
 ```powershell
-hermes-legion-commander doctor
-hermes-legion-commander routing plan --repo C:\path\to\repo --task "Implement the next roadmap item"
-hermes-legion-commander routing plan --repo C:\path\to\repo --check-auth
-hermes-legion-commander routing train --context-dir C:\path\to\repo\shared-context
-hermes-legion-commander routing config-example
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
 
-Every worker prompt now includes `ROUTING_CONTEXT.md` after `GOVERNANCE.md`, so
-Codex and Claude can see task classification, recommended mode, role assignment,
-runtime availability, and required checks before implementation. High-risk
-security, release, CI/workflow, dependency-manifest, and evidence changes
-recommend competitive verification. A routing refresh failure degrades to
-`shared-context/routing-context-error.json` and never blocks execution. See
-`docs/ROUTING_CONTEXT.md`.
+Optional keyring support:
 
-## Workflow governance
-
-Every worker prompt now includes `GOVERNANCE.md` after anchored truth. The governance preflight classifies changed-file risk, recommends mode escalation, applies patch-budget checks, explains evidence diffs, injects regression memory, warns about local/CI parity issues, and writes a dashboard under `shared-context/dashboard/index.html`.
-
-Manual commands:
-
-```powershell
-hermes-legion-commander governance check --repo C:\path\to\repo --base-ref origin/dev
-hermes-legion-commander governance comment --repo C:\path\to\repo --pr 12
-hermes-legion-commander governance branches list --repo C:\path\to\repo
-hermes-legion-commander governance branches cleanup --repo C:\path\to\repo --older-than-days 14
-hermes-legion-commander governance memory-add --context-dir C:\path\to\repo\shared-context --title "CRLF evidence" --rule "Normalize before hashing/signing text artifacts."
+```bash
+python -m pip install keyring
 ```
 
-When `--open-pr` is used, Commander adds merge-readiness information to the PR body and attempts to post a concise review comment.
+Verify the installed command surface:
 
-## Safety invariants
+```bash
+hermes-legion-commander --help
+```
 
-Hermes Legion Commander never automatically merges, pushes, deploys, tags, publishes, releases, changes credentials, or operates hardware. Dangerous-intent, massive-diff, and roadmap-update gates require explicit human approval.
+The old `legion-commander` executable remains a deprecated compatibility alias.
 
-All mutable work occurs in isolated Git worktrees. Competition candidates never share a worktree. Alternating mode uses one worktree but only one writer at a time.
+## Quick start: GUI-managed accounts
 
-## Repository contents
+The easiest current setup path is the local control panel:
+
+```bash
+hermes-legion-commander gui --config config/legion.toml
+```
+
+If `config/legion.toml` does not exist, the GUI creates a minimal base configuration. By default it binds only to:
+
+```text
+http://127.0.0.1:8765/
+```
+
+Use another loopback port or suppress browser launch with:
+
+```bash
+hermes-legion-commander gui --config config/legion.toml --port 8766
+hermes-legion-commander gui --config config/legion.toml --no-browser
+```
+
+The GUI keeps hand-authored TOML separate from managed account state:
+
+```text
+config/
+├── legion.toml
+└── legion.accounts.json
+```
+
+`legion.accounts.json` stores account metadata and **secret references only**. It must not contain raw API keys. On POSIX systems it is written with mode `0600`.
+
+See [docs/ACCOUNT_CONTROL_PANEL.md](docs/ACCOUNT_CONTROL_PANEL.md) for the full control-panel model and security boundary.
+
+## Multiple OAuth / native CLI accounts
+
+There is no hard account-count limit in the GUI registry.
+
+### Multiple Codex accounts
+
+Each GUI-managed Codex account receives an isolated `CODEX_HOME`:
+
+```text
+~/.local/share/hermes-legion-commander/accounts/<account-id>/codex
+```
+
+This allows separate native Codex login state for multiple ChatGPT/Codex accounts using the same `codex` binary.
+
+### Multiple Claude accounts
+
+Each GUI-managed Claude account receives an isolated `CLAUDE_CONFIG_DIR`:
+
+```text
+~/.local/share/hermes-legion-commander/accounts/<account-id>/claude
+```
+
+This allows multiple Claude Code account profiles using the same `claude` binary.
+
+The configured email is an **operator-facing label**, not provider-verified identity and not a credential. Native runtime status remains the authority for the authenticated account.
+
+From the CLI, OAuth/native accounts can also be managed directly:
+
+```bash
+hermes-legion-commander legion accounts list --config config/legion.toml
+
+hermes-legion-commander legion accounts login \
+  --config config/legion.toml \
+  --executor codex-simulation
+
+hermes-legion-commander legion accounts status \
+  --config config/legion.toml \
+  --executor codex-simulation
+```
+
+## API authentication
+
+API accounts use references rather than raw credentials:
+
+```text
+env:MY_PROVIDER_API_KEY
+file:/protected/path/provider.key
+keyring:hermes-legion-commander/account-id
+```
+
+The GUI can write an API key into the OS keyring when the optional Python `keyring` package is installed. The generated TOML/JSON stores only the keyring reference.
+
+API endpoints must use HTTPS, except explicit localhost development endpoints.
+
+Removing an account from the GUI does **not** destroy provider-native OAuth state or delete an OS-keyring secret. Credential destruction is intentionally a separate human-controlled operation.
+
+## Role-to-account mapping
+
+GUI-managed accounts can be associated with arbitrary roles in two main ways:
+
+- **Allowed pool** — restrict a role to selected executor accounts.
+- **Preferred pool** — prefer selected accounts while preserving eligible failover.
+
+An account can also be marked **Use this account only for assigned roles**, which prevents that executor from being selected for unrelated known roles.
+
+Examples:
+
+```text
+simulation-and-demo
+├── codex-simulation-a
+└── codex-simulation-b
+
+independent-review
+├── claude-review-a
+└── claude-review-b
+```
+
+This makes multiple accounts useful as independent resources rather than accidental global login swaps.
+
+## Generic Legion CLI
+
+Generate the current configuration example:
+
+```bash
+hermes-legion-commander legion config-example
+```
+
+Validate configuration:
+
+```bash
+hermes-legion-commander legion validate --config config/legion.toml
+```
+
+Inspect auth profiles, runtimes, and executors:
+
+```bash
+hermes-legion-commander legion roster --config config/legion.toml
+```
+
+Plan without executing workers:
+
+```bash
+hermes-legion-commander legion plan \
+  --config config/legion.toml \
+  --repo /path/to/target-repo \
+  --objective "Implement the next bounded work packet and independently review it" \
+  --state-dir /path/to/state
+```
+
+Run a campaign:
+
+```bash
+hermes-legion-commander legion run \
+  --config config/legion.toml \
+  --repo /path/to/target-repo \
+  --objective "Implement the next bounded work packet and independently review it" \
+  --state-dir /path/to/state
+```
+
+`legion run` fails closed if the reviewed skill baseline is not synchronized for all effective skill roots.
+
+## Reviewed skill baseline
+
+Every generic Legion executor must expose a skill root. Commander maintains an exact reviewed profile containing **86 skills**, sourced from pinned revisions of seven skill packs plus **Graphify 0.9.43**.
+
+Inspect the reviewed manifest:
+
+```bash
+hermes-legion-commander skills manifest
+```
+
+Check configured executor roots:
+
+```bash
+hermes-legion-commander skills check --config config/legion.toml
+```
+
+Install/synchronize the reviewed baseline:
+
+```bash
+hermes-legion-commander skills install --config config/legion.toml
+```
+
+The installer:
+
+- stages pinned upstream sources;
+- restricts Caveman to the reviewed subset;
+- enforces Graphify `0.9.43`;
+- rejects missing or unexpected skills;
+- rejects forbidden hook patterns;
+- preserves `.system` directories;
+- backs up existing roots before synchronization.
+
+At most **three relevant skills** are activated for a single generic campaign stage. Runtimes without native skill discovery receive selected `SKILL.md` context directly.
+
+## Repository-data safeguard
+
+HLC installs a provider-neutral model-bound data guard at the executor invocation boundary. The policy is based on **execution/data trust**, not provider nationality or brand.
+
+Default behavior:
+
+| Execution boundary | Default mode | Data ceiling | Secret handling |
+| --- | --- | --- | --- |
+| Local runtime | `standard` | `confidential` | redact |
+| CLI/native cloud worker | `standard` | `confidential` | redact |
+| HTTP/API runtime | `strict` | `internal` | block |
+| Explicit external-cloud / remote backend | `strict` | `internal` | block |
+| Lockdown | `lockdown` | `public` | block |
+
+The guard provides defense in depth through:
+
+- high-confidence secret detection in model-bound text;
+- redaction in standard mode;
+- fail-closed blocking in strict/lockdown mode;
+- prompt-size ceilings;
+- safe repository-context envelopes;
+- traversal, absolute-path, symlink, binary, and oversized-file rejection;
+- data classifications: `public < internal < confidential < restricted`;
+- default denial of common credential/key stores and `.git` material;
+- content-free audit records containing hashes and policy decisions rather than source text or secrets.
+
+Default safeguard audit location:
+
+```text
+~/.hermes-legion-commander/safeguard-audit.jsonl
+```
+
+Override with `LEGION_SAFEGUARD_AUDIT`.
+
+A strict remote CLI/custom/MCP adapter must declare an actually enforced filesystem sandbox with `sandbox_enforced = true`. Merely setting a working directory is not treated as isolation.
+
+See [docs/REPO_DATA_SAFEGUARD.md](docs/REPO_DATA_SAFEGUARD.md) for configuration examples and limitations.
+
+## GUI security model
+
+The account control panel is intentionally local-only. It:
+
+- binds to `127.0.0.1`;
+- validates the Host header;
+- requires a per-process CSRF token for writes;
+- rejects non-local browser origins;
+- sets `Cache-Control: no-store`;
+- uses a restrictive Content Security Policy;
+- uses no CDN or remote JavaScript;
+- uses no cookies or browser local storage;
+- caps JSON request bodies at 1 MiB;
+- never writes raw API keys into Legion TOML/JSON.
+
+This is a local configuration interface, not a remote management service.
+
+## Protected actions and human gates
+
+The generic Legion doctrine treats these as protected actions:
+
+```text
+merge
+push
+deploy
+tag
+publish
+release
+credential_change
+hardware_operation
+live_actuation
+```
+
+The generic campaign engine does not silently cross explicit human gates. Repository-local instructions may impose additional restrictions.
+
+For high-value proprietary repositories, the data guard should be combined with real OS/container isolation, network egress controls, repository-scoped credentials, and human review of what may leave the local environment.
+
+## Legacy compatibility workflows
+
+The historical workflows remain implemented for compatibility and for existing configurations. They are **presets**, not the primitive architecture of Legion v2.
+
+| Command | Purpose |
+| --- | --- |
+| `collaborating` | collaborative council workflow |
+| `competing` | competitive candidate/convergence workflow |
+| `alternating` | sequential worker handoff workflow |
+
+Deprecated aliases remain:
+
+```text
+council    → collaborating
+checkpoint → competing
+```
+
+Legacy configuration examples currently checked into `config/` are:
+
+```text
+config/checkpoint_competition.example.toml
+config/hermes_supervisor.example.toml
+config/model_council.example.toml
+config/model_council.multi-provider.example.toml
+```
+
+Useful compatibility documentation includes:
+
+- [docs/ALTERNATING_MODE.md](docs/ALTERNATING_MODE.md)
+- [docs/CHECKPOINT_COMPETITION.md](docs/CHECKPOINT_COMPETITION.md)
+- [docs/CROSS_VALIDATION.md](docs/CROSS_VALIDATION.md)
+- [docs/GOAL_CONTRACT.md](docs/GOAL_CONTRACT.md)
+- [docs/HANDOFF_SCHEMA.md](docs/HANDOFF_SCHEMA.md)
+
+Some older documents describe the historical two-worker Codex/Claude path. Treat those as compatibility documentation; use `hermes-legion-commander legion ...` and the account control panel for the provider-neutral architecture.
+
+## Other command surfaces
+
+The unified CLI also retains these supporting tools:
+
+| Command | Role |
+| --- | --- |
+| `supervisor` | optional Hermes Agent supervisor/profile workflow |
+| `doctor` | environment, authentication, configuration, and repository diagnostics |
+| `repo-graph` | local repository knowledge-graph operations |
+| `token-cost` | offline prompt-token and shadow API-equivalent cost estimates |
+| `github-health` | GitHub Actions / dependency-health gating utilities |
+| `governance` | risk escalation, PR readiness, regression memory, branch cleanup, dashboard |
+| `routing` / `router` | legacy routing-context helpers; prefer generic `legion plan` for new routing |
+
+See [docs/GITHUB_HEALTH.md](docs/GITHUB_HEALTH.md) and [docs/BRANCH_PR_WORKFLOW.md](docs/BRANCH_PR_WORKFLOW.md) for the corresponding legacy/governance workflows.
+
+## Repository layout
+
+Important current files:
 
 ```text
 hermes-legion-commander/
 ├── hermes_legion_commander/
-│   ├── cli.py
+│   ├── legion.py                 # provider-neutral contracts, registry, planner
+│   ├── legion_config.py          # generic Legion TOML loader
+│   ├── executor_runtime.py       # CLI/API/custom invocation boundary
+│   ├── campaign_engine.py        # arbitrary campaign DAG execution
+│   ├── doctrine.py               # repository-agnostic resource/development doctrine
+│   ├── skill_profile.py          # exact reviewed 86-skill baseline
+│   ├── repo_data_safeguard.py    # repository/model egress protection
+│   ├── account_registry.py       # GUI-managed multi-account companion registry
+│   ├── control_panel.py          # localhost OAuth/API account GUI
+│   ├── cli.py                    # unified command entry point
+│   ├── doctor.py
 │   ├── supervisor.py
-│   ├── model_council.py
-│   ├── checkpoint_competition.py
-│   ├── worker_runtime.py
-│   └── roadmap.py
-├── config/
-│   ├── model_council.example.toml
-│   ├── checkpoint_competition.example.toml
-│   └── hermes_supervisor.example.toml
+│   ├── model_council.py          # legacy collaborating/alternating path
+│   └── checkpoint_competition.py # legacy competing path
+├── config/                       # checked-in legacy/example configs
+├── docs/
+├── profiles/
 ├── scripts/
-│   ├── install-hermes-legion-commander.ps1
-│   ├── install-hermes-legion-commander.sh
-│   ├── setup-hermes-supervisor.ps1
-│   ├── setup-hermes-supervisor.sh
-│   ├── reset-hermes-legion-commander.ps1
-│   ├── reset-hermes-legion-commander.sh
-│   ├── repair-hermes-legion-commander.ps1
-│   └── repair-hermes-legion-commander.sh
 ├── tests/
-└── dist/hermes_legion_commander-1.7.4-py3-none-any.whl
+├── dist/                         # last packaged 1.7.4 artifact; predates current main
+├── pyproject.toml                # package metadata currently still 1.7.4
+└── README.md
 ```
 
-## Prerequisites
+A user-created `config/legion.toml` and its GUI companion `config/legion.accounts.json` are runtime configuration, not part of the checked-in example set on current `main`.
 
-Install and authenticate:
+## Release and verification state
 
-```text
-hermes
-codex
-claude
-git
-Python 3.11+
-```
+The repository currently has two distinct notions of state:
 
-For Windows development, WSL2 is the most predictable environment for Hermes and Git worktrees. Native PowerShell remains supported.
+1. **Last packaged release: 1.7.4**
+   - represented by `pyproject.toml`, `__version__`, `dist/`, `RELEASE-MANIFEST.json`, and `SHA256SUMS.txt`;
+   - the release manifest records the validation performed for that historical artifact.
 
-## Install on Windows
+2. **Current `main` source**
+   - includes Legion v2, multi-account OAuth/API support, the GUI, and repository safeguard added after the 1.7.4 artifact was built;
+   - should be installed from source until a new release is cut and its wheel/manifest are regenerated.
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
+Do not cite the 1.7.4 wheel's historical validation as validation of post-release `main` changes.
 
-.\scripts\install-hermes-legion-commander.ps1 `
-  -WheelPath ".\dist\hermes_legion_commander-1.7.4-py3-none-any.whl" `
-  -ExpectedVersion "1.7.4" `
-  -RecreateEnvironment `
-  -AddScriptsToUserPath
-```
+## Design principles
 
-The dedicated environment is:
+HLC follows a few durable rules:
 
-```text
-%LOCALAPPDATA%\HermesLegionCommander\venv
-```
+- **Provider is not role.** Scheduling policy should not hard-code a job to a vendor.
+- **Account is a resource.** Multiple logins for the same provider are independent executors.
+- **Available capacity is not authorization to spend it.** Resource budgets and cooldowns constrain unattended work.
+- **Builder self-report is provisional.** Completion should be independently reviewed when required.
+- **Secrets do not belong in prompts or configuration.** Use native auth or secret references.
+- **Prompt filtering is not a sandbox.** Strict remote CLI work requires a real isolation boundary.
+- **Human gates remain sovereign.** Protected actions are not implied by an agent's ability to perform them.
+- **Legacy modes are compatibility presets.** The generic Legion registry, roles, and DAG are the extensible foundation.
 
-Verify:
+## Recommended first workflow
 
-```powershell
-$CommanderExe = "$env:LOCALAPPDATA\HermesLegionCommander\venv\Scripts\hermes-legion-commander.exe"
-$CommanderPython = "$env:LOCALAPPDATA\HermesLegionCommander\venv\Scripts\python.exe"
-
-& $CommanderPython -P -c "import importlib.metadata as m; print(m.version('hermes-legion-commander'))"
-& $CommanderExe --help
-```
-
-The old `legion-commander` executable is retained as a deprecated compatibility alias.
-
-## Install on Linux or macOS
+For a fresh checkout of current `main`:
 
 ```bash
-chmod +x scripts/install-hermes-legion-commander.sh
+# 1. Install current source
+python -m pip install -e .
 
-./scripts/install-hermes-legion-commander.sh \
-  --wheel ./dist/hermes_legion_commander-1.7.4-py3-none-any.whl \
-  --expected-version 1.7.0 \
-  --recreate-environment \
-  --add-scripts-to-path
+# 2. Open the local multi-account control panel
+hermes-legion-commander gui --config config/legion.toml
+
+# 3. Add OAuth/native or API accounts and role bindings in the GUI
+#    then validate the composed configuration
+hermes-legion-commander legion validate --config config/legion.toml
+
+# 4. Synchronize the reviewed skill baseline
+hermes-legion-commander skills install --config config/legion.toml
+
+# 5. Inspect the resulting executor pool
+hermes-legion-commander legion roster --config config/legion.toml
+
+# 6. Plan before executing
+hermes-legion-commander legion plan \
+  --config config/legion.toml \
+  --repo /path/to/target-repo \
+  --objective "Implement a bounded change and independently review it"
+
+# 7. Run only after the plan, account status, skills, and data boundary are acceptable
+hermes-legion-commander legion run \
+  --config config/legion.toml \
+  --repo /path/to/target-repo \
+  --objective "Implement a bounded change and independently review it"
 ```
 
-## Clean reset
+For detailed account security and repository-data controls, start with:
 
-The reset scripts archive old `LegionCommander` and `HermesLegionCommander` state, reinstall v1.7.0, create fresh council/checkpoint configs, configure the Hermes supervisor profile, and run zero-model preflight checks.
-
-Windows:
-
-```powershell
-.\scripts\reset-hermes-legion-commander.ps1 `
-  -TargetRepo "C:\path\to\target-repo"
-```
-
-Linux/macOS:
-
-```bash
-./scripts/reset-hermes-legion-commander.sh /path/to/target-repo
-```
-
-## Repair
-
-```powershell
-.\scripts\repair-hermes-legion-commander.ps1 `
-  -TargetRepo "C:\path\to\target-repo" `
-  -Reinstall
-```
-
-Repair verifies the package, `hermes`, `codex`, `claude`, the supervisor profile, worker resolution, and local roadmap preflight.
-
-## Configure the Hermes supervisor
-
-```powershell
-.\scripts\setup-hermes-supervisor.ps1 -Profile "legion-supervisor" -Force
-```
-
-The setup creates or repairs:
-
-```text
-~/.hermes/profiles/legion-supervisor/SOUL.md
-~/.hermes/profiles/legion-supervisor/skills/hermes-legion-commander/SKILL.md
-```
-
-It does not copy Codex or Claude credentials into Hermes. Native CLI authentication remains separate.
-
-Preview the exact command and Hermes prompt without invoking a model:
-
-```powershell
-& $CommanderExe supervisor `
-  --repo-root $PWD `
-  print-command `
-  --mode alternating `
-  --config .\config\model_council.local.toml `
-  --repo C:\path\to\target-repo `
-  --from-version 51 `
-  --to-version 57
-```
-
-Ask Hermes to launch it:
-
-```powershell
-& $CommanderExe supervisor `
-  --profile legion-supervisor `
-  --repo-root $PWD `
-  run `
-  --mode alternating `
-  --config .\config\model_council.local.toml `
-  --repo C:\path\to\target-repo `
-  --from-version 51 `
-  --to-version 57
-```
-
-Hermes receives an exact Commander command and is instructed not to call Codex or Claude directly.
-
-Read durable status without invoking a model:
-
-```powershell
-& $CommanderExe supervisor status `
-  --state-dir "$env:LOCALAPPDATA\HermesLegionCommander\state\model-council" `
-  --run-id $RunId
-```
-
-
-## Hermes SOUL and goal-contract model
-
-The `legion-supervisor` profile is deliberately prohibited from becoming a hidden coder or reviewer. It translates operator intent into a persistent goal contract, launches Commander, maintains the durable ledger, surfaces approvals and blockers, and reports evidence.
-
-The installed profile includes:
-
-```text
-~/.hermes/profiles/legion-supervisor/
-├── SOUL.md
-└── skills/hermes-legion-commander/
-    ├── SKILL.md
-    ├── GOAL-CONTRACT.md
-    └── HANDOFF-SCHEMA.md
-```
-
-The goal contract records objective, bounded scope, constraints, acceptance criteria, forbidden actions, required checks, handoff evidence, and human gates. Builder self-report remains provisional; review returns `PASS`, `BLOCKED`, or `NEEDS_HUMAN`. A blocked review creates a scoped fix contract and a delta re-review rather than a vague restart.
-
-Preview the generated profile without invoking a model:
-
-```powershell
-& $CommanderExe supervisor show-soul
-& $CommanderExe supervisor show-skill
-& $CommanderExe supervisor show-goal-contract
-& $CommanderExe supervisor show-handoff-schema
-```
-
-Repository-controlled copies are under `profiles/legion-supervisor/`.
-
-## Three execution modes
-
-Hermes Legion Commander runs three distinct modes, each its own top-level command.
-Two auto-continue across a version range in one run; the third stops at each
-version and hands off.
-
-- **`collaborating`** — collaborative council: multiple roles (research,
-  literature, prototype, polish, security assurance) collaborate on each version,
-  and the run auto-continues across the whole range.
-- **`competing`** — competitive convergence: two independent candidates build each
-  version, are judged, and converge; auto-continues across the range.
-- **`alternating`** — rapid alternate: a single chosen worker implements one
-  version, then the run stops and hands the baton to the other worker
-  (codex↔claude) to continue the next version. A fast single-worker relay with a
-  human or scheduler deciding each handoff.
-
-```
-hermes-legion-commander collaborating --config <config> campaign --from-version 51 --to-version 57
-hermes-legion-commander competing     --config <config> run --from-version 51 --to-version 57
-hermes-legion-commander alternating   --config <config> --version 51 --worker codex --to-version 57
-```
-
-The former command names `council` and `checkpoint` still work as deprecated
-aliases for `collaborating` and `competing` (they print a deprecation warning);
-prefer the new names. The TOML config sections are unchanged (`[council]` for
-collaborating/alternating, `[competition]` for competing).
-
-## Collaborating mode (council)
-
-Create a local config:
-
-```powershell
-Copy-Item .\config\model_council.example.toml .\config\model_council.local.toml
-```
-
-Set absolute `repo`, `state_dir`, `research_dir`, and roadmap paths. Then verify:
-
-```powershell
-& $CommanderExe collaborating --config .\config\model_council.local.toml workers --check
-& $CommanderExe collaborating --config .\config\model_council.local.toml preflight --repo C:\path\to\target-repo
-```
-
-Run:
-
-```powershell
-$RunId = "target-repo-council-v51-v57-" + (Get-Date -Format "yyyyMMdd-HHmmss")
-
-& $CommanderExe collaborating `
-  --config .\config\model_council.local.toml `
-  campaign `
-  --from-version 51 `
-  --to-version 57 `
-  --strategy full `
-  --run-id $RunId
-```
-
-## Selecting a roadmap file
-
-By default the roadmap is the config value (`roadmap_path` for council, `plan`
-for checkpoint), and discovery also picks up any other `docs/*roadmap*.md` files
-as context. To choose a specific roadmap for a single run without editing config,
-pass `--roadmap`. It goes immediately after `--config`, before the subcommand:
-
-```powershell
-# Council: drive this run from a specific roadmap file
-& $CommanderExe collaborating `
-  --config .\config\model_council.local.toml `
-  --roadmap .\docs\target-roadmap.md `
-  preflight
-
-& $CommanderExe collaborating `
-  --config .\config\model_council.local.toml `
-  --roadmap .\docs\target-roadmap.md `
-  campaign --from-version 51 --to-version 57 --run-id $RunId
-```
-
-```powershell
-# Checkpoint: same flag, same position
-& $CommanderExe competing `
-  --config .\config\checkpoint_competition.local.toml `
-  --roadmap .\docs\target-roadmap.md `
-  run --from-version 51 --to-version 57
-```
-
-The path may be relative to the target repo or absolute. The selected file is
-used as the primary roadmap even if it lives outside `docs/` or is not named
-`*roadmap*.md`; any other `docs/*roadmap*.md` files still follow as secondary
-context. Run `preflight` first to confirm `primary_roadmap` points where you
-expect.
-
-## Failover strategy (within collaborating)
-
-Note: this is a failover *strategy* within the `collaborating` mode, not the
-`alternating` command. The failover strategy preserves the collaborating role
-plan but immediately tries the other worker when the assigned worker is blocked
-by a configured availability class.
-
-```toml
-[council]
-worker_failover = true
-failover_on = ["quota", "entitlement", "authentication"]
-```
-
-Run:
-
-```powershell
-& $CommanderExe collaborating `
-  --config .\config\model_council.local.toml `
-  campaign `
-  --from-version 51 `
-  --to-version 57 `
-  --strategy alternating `
-  --run-id $RunId
-```
-
-Stage state records:
-
-Commander also writes provider-neutral learning and scope-routing ledgers under each run's `shared-context/` directory. The learning ledger captures prompt/output artifacts and hashes, observed Codex CLI / Claude Code token and cost fields, status and roadmap-version alignment signals, and aggregate efficiency summaries. The scope router writes `scope-assessment.json` and `routing-decision.json` per stage, then uses deterministic request scope plus prior ledger outcomes to select the configured worker/model and low/medium/high effort for future stages. See `docs/USAGE_LEARNING.md`.
-
-
-```json
-{
-  "requested_agent": "gpt",
-  "agent": "claude",
-  "failovers": [
-    {"from": "gpt", "to": "claude", "reason": "quota"}
-  ]
-}
-```
-
-If both workers are unavailable, Commander preserves state and waits according to `quota_retry_seconds` and `quota_max_retry_seconds`. `--no-wait` converts that condition into a resumable pause.
-
-Alternating mode cannot guarantee zero downtime when both workers are unavailable, a human approval is pending, or the next task cannot safely be substituted.
-
-## Rapid alternate mode
-
-Rapid alternate implements one version with one worker, then stops at the version
-boundary and hands the work to the other worker to continue. It is a deliberate
-stop-and-handoff, not the auto-failover strategy above: nothing is merged,
-pushed, or committed, and the worktree is left for review.
-
-```powershell
-# codex implements v51, then the run stops and hands off to claude for v52
-& $CommanderExe alternating --config $CouncilConfig `
-  --version 51 --worker codex --to-version 57
-```
-
-With exactly two configured agents the next worker is inferred (the ping-pong);
-with more agents pass `--handoff-to`. Each turn writes `HANDOFF.md` and
-`handoff.json` containing the exact next command, a ready-to-paste continuation
-prompt for the next worker, and a `HANDOFF:` line. The next turn is simply:
-
-```powershell
-& $CommanderExe alternating --config $CouncilConfig `
-  --version 52 --worker claude --handoff-to codex --to-version 57
-```
-
-At the end of the range the handoff reports completion instead of a next worker.
-The dangerous-intent approval gate still applies before a risky version runs.
-
-## Competing mode (convergence)
-
-Create a local config:
-
-```powershell
-Copy-Item .\config\checkpoint_competition.example.toml .\config\checkpoint_competition.local.toml
-```
-
-Both workers execute every role using role-specific model and effort values. Each candidate runs in a separate worktree. Both workers judge both candidates. The winner seeds a third convergence worktree, then Codex and Claude improve it sequentially.
-
-```powershell
-& $CommanderExe competing `
-  --config .\config\checkpoint_competition.local.toml `
-  --repo C:\path\to\target-repo `
-  run `
-  --from-version 51 `
-  --to-version 57
-```
-
-## Multiple providers and models
-
-Workers are not limited to Codex CLI and Claude Code. Any CLI-driven model can
-fill a council role or be a checkpoint competitor — a different provider, or the
-same provider with a different model and effort.
-
-Each `[agents.<name>]` table needs a `runtime`, a `provider`, and a `command`.
-For the two built-in runtimes the command must still launch the matching
-executable (`codex-cli` → `codex`, `claude-code` → `claude`), so a typo cannot
-silently run the wrong tool. Any other `runtime` id is treated as a custom
-runtime: no executable check is enforced, output is parsed by `output_format`
-(use `text` unless the CLI emits `codex-jsonl`/`claude-json`), and the command
-template can interpolate `{model}`, `{prompt}`, `{context_dir}`, and
-`{output_file}`.
-
-Council maps roles to agents, so the same provider can appear twice with
-different models:
-
-```toml
-[roles]
-researcher         = "codex_fast"   # gpt-5-mini, effort=low
-security_assurance = "codex_deep"   # gpt-5.5, effort=high
-
-[agents.codex_fast]
-runtime = "codex-cli"
-provider = "openai"
-model = "gpt-5-mini"
-effort = "low"
-command = ["codex", "{model_args}", "{effort_args}", "exec", "-"]
-
-[agents.codex_deep]
-runtime = "codex-cli"
-provider = "openai"
-model = "gpt-5.5"
-effort = "high"
-command = ["codex", "{model_args}", "{effort_args}", "exec", "-"]
-```
-
-Checkpoint takes exactly two `[agents.*]` tables; whatever they are named becomes
-the two competitors, so a cross-provider tournament is just two agents with
-different runtimes. A full worked council example is in
-`config/model_council.multi-provider.example.toml`.
-
-Loop-engineering note: the generator/evaluator split is the floor of a reliable
-loop, and a model reviewing its own output keeps its own blind spots. Put the
-evaluator role (`security_assurance` in council; the judge/cross-reviewer in
-checkpoint) on a *different* model from the generator. Multi-provider support is
-what makes that separation a config change rather than a code change. Run
-`workers` to confirm each role resolves to the model you intend before launching
-a campaign.
-
-## Stop conditions (`/goal`)
-
-A loop's floor is its evaluator, so completion should be decided by a fresh model
-— one that did not produce the work — not by the generator grading its own
-homework. The `goal` command implements this maker-checker check.
-
-```powershell
-# Council: a fresh model judges whether the condition holds over the configured checks
-& $CommanderExe collaborating `
-  --config .\config\model_council.local.toml `
-  goal --condition "all tests in tests/ pass and the lint step is clean"
-
-# Pick the judging model explicitly (should differ from the generator)
-& $CommanderExe collaborating --config $CouncilConfig goal --condition "..." --judge claude_deep
-
-# See what would be evaluated without calling the model
-& $CommanderExe collaborating --config $CouncilConfig goal --condition "..." --dry-run
-```
-
-```powershell
-# Checkpoint: the judge is one of the two competitors (default: the first)
-& $CommanderExe competing --config $CheckpointConfig goal --condition "..." --judge gemini
-```
-
-Evaluation has two layers. The configured `checks` run first and form a hard
-floor: if any check fails, the condition is not met no matter what the model
-says — a model cannot talk a red test into being green. Then a fresh model reads
-that evidence and decides whether the natural-language condition holds,
-defaulting to not-met. The verdict is JSON: `met`, `model_met`,
-`deterministic_all_passed`, `reasons`, `unmet`, and the raw check results.
-
-The default council judge is the `security_assurance` agent (the evaluator, not
-the generator); `--judge` overrides it. Pair this with multi-model support so the
-judge runs on a different model from the generator.
-
-`campaign --until "<condition>"` runs the same /goal gate automatically after a
-campaign, judging the condition against the campaign worktree and recording the
-verdict in the run's `result.json` and `stop-condition.json`. It does not halt a
-batch mid-flight; rerunning until the condition is met is a scheduling concern.
-
-## Loops: running until met
-
-`council loop` schedules campaigns into a loop with the two guards loop
-engineering depends on: it runs until a stop condition is met, and a budget
-circuit-breaker bounds the run.
-
-```powershell
-# Local loop: run a campaign turn, re-check the goal, sleep, repeat -- until met
-# or a cap trips. Machine must stay on.
-& $CommanderExe collaborating --config $CouncilConfig loop `
-  --condition "all tests pass and the v51-57 field-deployability items are done" `
-  --from-version 51 --to-version 57 `
-  --max-turns 8 --max-consecutive-failures 3 --max-cost-usd 40 --interval 3600
-```
-
-Each turn first asks a fresh model whether the condition already holds in the
-repository; if it does, the loop stops without doing more work. Otherwise it runs
-one campaign turn, which opens proposals for human review and never auto-merges
--- so the human review point stays installed, and merged work carries into the
-next turn's goal check. The circuit-breaker caps (`--max-turns`,
-`--max-consecutive-failures`, `--max-cost-usd`) convert an open-ended overnight
-run into a bounded one; the cost ceiling is enforced against the offline
-shadow-cost estimate.
-
-For machine-off autonomy, run one turn per scheduled tick from CI. `loop-init`
-emits a ready-to-commit GitHub Actions workflow:
-
-```bash
-hermes-legion-commander collaborating --config config/model_council.toml \
-  loop-init --condition "all tests pass and lint is clean" \
-  --from-version 51 --to-version 57 --cron "0 6 * * *" \
-  --out .github/workflows/hermes-legion-loop.yml
-```
-
-The cron schedule is the scheduler; `--single-turn` runs one turn per invocation
-and the committed loop state resumes the next run. Local scheduling buys
-frequency and local-file access at the cost of keeping the machine on; cloud
-scheduling buys true autonomy at the cost of a coarser interval and a fresh
-checkout each run. A mature loop often uses both.
-
-## Subagent delegation and prompt-effectiveness metrics
-
-To keep token and API usage low, the generator prompts in both modes authorize
-the lead worker to spawn weaker, cheaper subagents for parallelizable grunt work
--- mechanical edits across many files, repetitive test scaffolding, reference
-scanning, formatting -- while design, security, and final verification stay on
-the lead. Each subagent is directed to the cheapest capable model, so several
-cheap subagents running in parallel cost less and finish sooner than one strong
-model doing everything. Review and judge roles do not receive the delegation
-contract.
-
-The cap defaults to five but is configurable per run. Set `subagent_cap` in the
-config (`[council]` for collaborating/alternating, `[competition]` for competing)
-to raise or lower it:
-
-```toml
-[council]
-subagent_cap = 8   # allow up to 8 subagents; default is 5, set 0 to disable delegation
-```
-
-The configured number is injected into the worker prompt as a hard limit, and the
-same cap drives the over-cap detection in the metrics below, so the
-`prompt-effectiveness.json` report reflects whatever value you set.
-
-Workers report what they spawned in a `SUBAGENTS:` block, which is parsed and
-recorded on every stage event. Those events aggregate into
-`prompt-effectiveness.json` in the run's shared context, with per-role signals
-the supervisor optimizes against: pass rate, input/output tokens, an
-output-per-input-token efficiency ratio, average cost, subagent utilization and
-any cap breaches, and retry/failover counts. Reading this is how Hermes learns
-which prompts produce efficient, passing work and which waste tokens or fail, and
-tunes how it prompts Codex and Claude.
-
-Authentication is unchanged: Codex and Claude Code work with a subscription/OAuth
-session, an explicit OAuth token, or an API key; the worker environment sanitizer
-preserves native CLI credential stores so an OAuth session is available inside
-the subprocess.
-
-## Shared memory and handoffs
-
-Every completed stage records:
-
-- normalized output;
-- worker and runtime;
-- provider session ID when available;
-- file changes and Git diff summary;
-- tests and experiments;
-- unresolved risks;
-- artifact paths and hashes;
-- requested and executed worker;
-- failover history.
-
-Provider-private histories are never treated as shared memory.
-
-## Environment sanitization
-
-Each worker may define `unset_env`. Only listed variables are removed from its subprocess environment. API keys are not removed implicitly. The examples remove cross-provider endpoint overrides that commonly leak through parent orchestrators.
-
-## Approvals and resume
-
-Approve a blocked council run:
-
-```powershell
-& $CommanderExe collaborating --config $CouncilConfig approve --run-id $RunId --phase dangerous-intent --note "Reviewed isolated scope"
-& $CommanderExe collaborating --config $CouncilConfig resume --run-id $RunId
-```
-
-Checkpoint uses the same explicit approval model through its own `approve` and `resume` commands.
-
-## Validation outputs
-
-Per-version campaigns can produce:
-
-```text
-docs/iterations/<version>-<feature>.md
-tests/test_v<version>_*.py
-experiments/run_v<version>_*.py
-results/iterations/v<version>/campaign-result.json
-results/iterations/v<version>/campaign-result.md
-```
-
-## Package verification
-
-```bash
-python -m pytest -q
-python -m compileall -q hermes_legion_commander
-python -m build
-```
-
-## Validation
-
-- **59 automated tests passed**
-- Isolated wheel installation passed
-- Supervisor profile setup created all four contract files
-- No live provider calls were used for release verification
-
-Wheel SHA-256: `f0fa53655b07e0ef367b0a01137b3281a43780ecea551290cd3a8eb0e4d3c684`
-
-
-## Generic Hermes worker profiles
-
-The Hermes setup now creates three profiles:
-
-```text
-legion-supervisor
-legion-worker-a
-legion-worker-b
-```
-
-`legion-worker-a` and `legion-worker-b` are interchangeable harness workers.
-Neither is permanently assigned to Codex, Claude, building, or reviewing. For
-every task, the supervisor supplies an explicit dispatch contract naming the
-mode, logical role, native runtime, permission, model, effort, workspace,
-shared-context snapshot, objective, checks, and required handoff.
-
-This supports:
-
-- council assignments with role-specialized stages;
-- competition assignments with isolated candidates and cross-judging;
-- alternating assignments where either profile may operate either runtime after
-  an explicit handoff or failover decision.
-
-Inspect the generated policy without invoking a model:
-
-```powershell
-& $CommanderExe supervisor show-worker-soul
-& $CommanderExe supervisor show-worker-skill
-& $CommanderExe supervisor show-dispatch-contract
-& $CommanderExe supervisor assignment-plan --mode council
-& $CommanderExe supervisor assignment-plan --mode competition
-& $CommanderExe supervisor assignment-plan --mode alternating
-```
-
-See `docs/GENERIC_WORKER_PROFILES.md`.
-
-
-## Manual-run-derived prompt hardening
-
-The supervisor and worker prompts now include a reusable roadmap execution contract derived from successful manual Codex/Claude target-repository runs:
-
-- work version-by-version;
-- finish the active version before quota/context handoff;
-- use exact handoff lines with HEAD/version/branch/tree state;
-- commit only when the dispatch policy permits it;
-- commit only current-version evidence;
-- never machine-award host-side physical, HIL, field, audit, publication, tag, or release gates;
-- ignore phantom Git diffs when the worktree hash equals the HEAD blob.
-
-See `docs/PROMPT_IMPROVEMENTS_FROM_MANUAL_RUNS.md`.
-
-## Automated setup on Windows and Linux
-
-The fastest supported installation path is now the platform bootstrap script.
-
-Windows:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-
-.\scripts\bootstrap-hermes-legion-commander.ps1 `
-  -TargetRepo "C:\path\to\target-repo"
-```
-
-Linux or WSL2:
-
-```bash
-./scripts/bootstrap-hermes-legion-commander.sh \
-  --target-repo "$HOME/code/target-repo"
-```
-
-The bootstrap installs missing official prerequisites, installs Commander in a
-dedicated environment, creates fresh configs and all three Hermes profiles,
-checks authentication, and runs zero-model council and checkpoint preflights.
-
-Afterward, use the built-in diagnostic:
-
-```text
-hermes-legion-commander doctor
-```
-
-See `docs/AUTOMATED_SETUP.md`.
-
-### Windows PowerShell 5.1 Codex installation
-
-The Windows bootstrap is compatible with older PowerShell 5.1/.NET Framework
-hosts that do not expose `RuntimeInformation.OSArchitecture`. It patches only
-the official installer’s architecture assignment, runs the installer in a
-child PowerShell process, and uses the official `@openai/codex` npm package as
-a secondary fallback when npm is available.
-
-## Repository graph navigation
-
-Every run now builds a local Graphify-style repository knowledge graph under `shared-context/repo-map/` and injects a task-specific `repo-context-pack.md` into worker prompts. This gives Codex CLI and Claude Code a compact start-here map of likely files, symbols, calls, imports, entrypoints, docs, tests, schema/config files, communities, hotspots, and graph neighbors before they perform broad repository reads. The graph exports `graph.json`, `graph.html`, `GRAPH_REPORT.md`, `REPO_MAP.md`, `repo-map-index.jsonl`, `cache/`, and `wiki/`, and the CLI can query paths directly with `hermes-legion-commander repo-graph query` or `path`. Scope-aware routing also records `repo_facts` so model and effort selection can account for repository size, language mix, and multimodal assets.
-
-See `docs/REPO_GRAPH.md` for output formats, commands, and limits.
-
-
-
-### Prompt token and shadow API cost preflight
-
-Every Codex CLI / Claude Code stage now records a local preflight estimate before the worker is invoked. It works with ChatGPT/Codex OAuth and Claude subscription OAuth because it does not require API calls. Outputs include `prompt-preflight.json`, `prompt-cost-estimate.json`, `shared-context/prompt-preflight-ledger.jsonl`, and `shared-context/prompt-cost-summary.md`.
-
-Manual estimate:
-
-```powershell
-hermes-legion-commander token-cost --runtime codex-cli --model gpt-5.3-codex --prompt-file .\prompt.md
-hermes-legion-commander token-cost --runtime claude-code --model claude-sonnet-4-6 --prompt-file .\prompt.md
-```
-
-- `docs/GITHUB_HEALTH.md` — GitHub Actions and Dependabot acceptance gate.
+- [Multi-account OAuth/API control panel](docs/ACCOUNT_CONTROL_PANEL.md)
+- [Repository Data Safeguard](docs/REPO_DATA_SAFEGUARD.md)
