@@ -6,6 +6,7 @@ import sys
 
 from . import (
     checkpoint_competition,
+    control_panel,
     doctor,
     github_health,
     legion_cli,
@@ -29,9 +30,8 @@ def parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="workflow", required=True)
     sub.add_parser("legion", help="Primary generic engine: plan/run arbitrary multi-provider role and campaign DAGs")
+    sub.add_parser("gui", help="Local multi-account OAuth/API control panel")
     sub.add_parser("skills", help="Install/verify the reviewed shared skill baseline for every configured runtime")
-    # Compatibility presets. These remain available while their internals migrate
-    # onto the generic Legion primitives.
     sub.add_parser("collaborating", help="Compatibility preset: collaborative council workflow")
     sub.add_parser("competing", help="Compatibility preset: competitive convergence workflow")
     sub.add_parser("alternating", help="Compatibility preset: sequential worker handoff workflow")
@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
     workflow = args.pop(0)
     if workflow == "legion":
         return legion_cli.cli_main(args)
+    if workflow == "gui":
+        return control_panel.cli_main(args)
     if workflow == "skills":
         return skill_profile.cli_main(args)
     if workflow in {"collaborating", "council"}:
