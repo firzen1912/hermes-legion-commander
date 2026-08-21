@@ -51,6 +51,43 @@ def replace_regex(path: str, pattern: str, replacement: str, *, count: int = 1) 
     write(path, updated)
 
 
+def ensure_supervisor_quota_policy() -> None:
+    """Restore the quota-aware clean-boundary policy to the v2 goal contract.
+
+    The policy already exists in prompt_contracts.py for legacy/versioned work.
+    The v2 supervisor goal template must carry the same boundary so a generic
+    campaign cannot lose quota/handoff discipline merely by using Legion v2.
+    """
+    path = "hermes_legion_commander/supervisor.py"
+    text = read(path)
+    if "## Quota and handoff policy" in text:
+        return
+    needle = """## Resource constraints
+- Subscription reserve/budget:
+- API soft/hard budget:
+- Context/phase boundaries:
+
+## Acceptance criteria
+"""
+    replacement = """## Resource constraints
+- Subscription reserve/budget:
+- API soft/hard budget:
+- Context/phase boundaries:
+
+## Quota and handoff policy
+- Available capacity is not authorization to consume it; preserve configured reserve, cooldown, and context boundaries.
+- Do not start a new version or work packet when the configured quota/context watermark or stop boundary has been reached.
+- If quota/context pressure appears mid-version, finish active version if feasible and safe, run its focused checks, persist the exact checkpoint/handoff, and then stop.
+- Never switch or rotate accounts merely to evade a provider quota, cooldown, entitlement, or authentication boundary.
+- Every quota pause must record changed/reviewed files, checks, resource events, unresolved work, and the exact next action.
+
+## Acceptance criteria
+"""
+    if text.count(needle) != 1:
+        raise SystemExit("supervisor goal-contract resource section was not found exactly once")
+    write(path, text.replace(needle, replacement, 1))
+
+
 def prepare(version: str) -> None:
     version = require_version(version)
 
@@ -65,6 +102,7 @@ def prepare(version: str) -> None:
         r'^__version__\s*=\s*"[^"]+"$',
         f'__version__ = "{version}"',
     )
+    ensure_supervisor_quota_policy()
 
     for relative in ACTIVE_VERSION_FILES:
         path = ROOT / relative
@@ -77,7 +115,7 @@ def prepare(version: str) -> None:
 
     readme = read("README.md")
     release_note_pattern = re.compile(
-        r"> \*\*Release-state note:\*\*.*?(?=\n\n## Architecture)",
+        r"> \*\*(?:Release-state note|Release status):\*\*.*?(?=\n\n## Architecture)",
         re.DOTALL,
     )
     release_note = (
@@ -87,7 +125,7 @@ def prepare(version: str) -> None:
     )
     readme, changed = release_note_pattern.subn(release_note, readme, count=1)
     if changed != 1:
-        raise SystemExit("README release-state note was not found exactly once")
+        raise SystemExit("README release-status note was not found exactly once")
     readme = readme.replace("## Install current `main`", f"## Install {version} / current `main`", 1)
     marker = "### Linux / macOS\n"
     wheel_block = (
@@ -117,6 +155,7 @@ def prepare(version: str) -> None:
 - Added the localhost-only multi-account GUI with Codex/Claude account isolation and API secret references.
 - Added arbitrary role contracts, elastic team policies, account affinity/pools, and campaign DAG execution.
 - Added quota/resource doctrine, bounded stage execution, explicit semantic verdicts, and protected human gates.
+- Restored the quota-aware clean-boundary handoff policy in the generic v2 supervisor goal contract.
 - Added the exact reviewed 86-skill baseline with pinned upstream revisions and Graphify 0.9.43.
 - Added the provider-neutral repository-data egress safeguard with standard/strict/lockdown policies.
 - Kept collaborating, competing, alternating, supervisor, governance, routing, and related workflows as compatibility/support surfaces.
@@ -196,6 +235,7 @@ Hermes Legion Commander v{version} is the first packaged release of the Legion v
 - Localhost-only account and role control panel.
 - Arbitrary roles, executor affinity/pools, and campaign DAGs.
 - Resource/quota doctrine and protected human gates.
+- Quota-aware clean-boundary supervisor handoffs.
 - Exact reviewed 86-skill baseline with Graphify 0.9.43.
 - Provider-neutral repository-data egress safeguard.
 - Legacy collaborating/competing/alternating workflows retained as compatibility presets.
