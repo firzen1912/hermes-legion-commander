@@ -1,3 +1,19 @@
+# Changelog
+
+## 2.0.0 — Legion v2 provider-neutral orchestration
+
+- Promoted the provider/model/runtime/auth/executor architecture to the primary stable release line.
+- Added OAuth/native/API authentication with multiple independently schedulable accounts per provider.
+- Added the localhost-only multi-account GUI with Codex/Claude account isolation and API secret references.
+- Added arbitrary role contracts, elastic team policies, account affinity/pools, and campaign DAG execution.
+- Added quota/resource doctrine, bounded stage execution, explicit semantic verdicts, and protected human gates.
+- Restored the quota-aware clean-boundary handoff policy in the generic v2 supervisor goal contract.
+- Added the exact reviewed 86-skill baseline with pinned upstream revisions and Graphify 0.9.43.
+- Added the provider-neutral repository-data egress safeguard with standard/strict/lockdown policies.
+- Kept collaborating, competing, alternating, supervisor, governance, routing, and related workflows as compatibility/support surfaces.
+- Refreshed active install/reset/repair/bootstrap version references so clean recovery cannot downgrade to a pre-v2 wheel.
+- Release evidence is generated from a clean GitHub Actions build and fresh-wheel installation before publication.
+
 ## 1.7.4 — Governance, PR readiness, and review dashboard
 
 - Added a workflow governance layer that refreshes before every worker prompt and writes `GOVERNANCE.md`, merge-readiness JSON/Markdown, changed-file inventory, and a static dashboard.
@@ -11,7 +27,6 @@
 - Added `governance branches list/cleanup` for Legion Commander branch garbage collection.
 - Added `governance check` and dashboard generation for manual health inspection.
 
-# Changelog
 
 ## 1.7.2 — Anchored truth prompt preflight
 

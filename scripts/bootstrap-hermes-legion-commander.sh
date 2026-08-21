@@ -13,7 +13,7 @@ NON_INTERACTIVE=0
 RESET_STATE=0
 ALLOW_DIRTY=0
 RUN_LIVE_SMOKE=0
-VERSION="0.8.5"
+VERSION="2.0.0"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 usage() {
@@ -263,7 +263,7 @@ import datetime, json, pathlib, sys
 path, root, target, council, checkpoint, archive = sys.argv[1:]
 payload = {
     "ready": True,
-    "version": "0.8.5",
+    "version": "2.0.0",
     "platform": "linux",
     "commander_repo": root,
     "target_repo": target,

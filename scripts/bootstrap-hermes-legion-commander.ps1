@@ -36,7 +36,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$Version = "0.8.5"
+$Version = "2.0.0"
 $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
 function Step([string]$Message) {

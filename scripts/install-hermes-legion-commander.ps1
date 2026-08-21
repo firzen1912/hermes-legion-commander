@@ -21,14 +21,14 @@
 
 .EXAMPLE
   .\scripts\install-hermes-legion-commander.ps1 `
-    -WheelPath ".\dist\hermes_legion_commander-0.8.5-py3-none-any.whl" `
-    -ExpectedVersion "0.8.5" `
+    -WheelPath ".\dist\hermes_legion_commander-2.0.0-py3-none-any.whl" `
+    -ExpectedVersion "2.0.0" `
     -AddScriptsToUserPath
 
 .EXAMPLE
   .\scripts\install-hermes-legion-commander.ps1 `
     -SourcePath "." `
-    -ExpectedVersion "0.8.5" `
+    -ExpectedVersion "2.0.0" `
     -RecreateEnvironment `
     -AddScriptsToUserPath
 #>

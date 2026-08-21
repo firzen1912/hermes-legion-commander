@@ -1,40 +1,37 @@
 {
-    "artifacts":  [
-                      {
-                          "bytes":  170972,
-                          "path":  "dist/hermes_legion_commander-1.7.4-py3-none-any.whl",
-                          "sha256":  "6a0976fbcbec181a4623b27b701803392909da080ae1808a6755d555d0960593"
-                      }
-                  ],
-    "built_at":  "2026-06-28T00:17:51.3503996Z",
-    "patches":  [
-                    "usage-learning",
-                    "scope-aware-routing",
-                    "repo-graph",
-                    "graphify-kg",
-                    "cross-validation",
-                    "token-preflight-shadow-cost",
-                    "explicit-roadmap-selection",
-                    "multi-provider-multi-model",
-                    "adversarial-evaluator",
-                    "goal-stop-condition",
-                    "loop-scheduling",
-                    "subagent-delegation",
-                    "prompt-effectiveness-metrics",
-                    "three-named-modes",
-                    "rapid-alternate-handoff",
-                    "mode-command-rename",
-                    "configurable-subagent-cap",
-                    "github-health-gate",
-                    "anchored-truth-preflight",
-                    "branch-pr-workflow",
-                    "workflow-governance-pr-readiness-dashboard"
-                ],
-    "release":  "1.7.4",
-    "validation":  {
-                       "compileall":  "passed",
-                       "pytest":  "179 passed in 80.14s",
-                       "wheel_import":  "passed"
-                   },
-    "version":  "1.7.4"
+  "artifacts": [
+    {
+      "bytes": 224643,
+      "path": "dist/hermes_legion_commander-2.0.0-py3-none-any.whl",
+      "sha256": "41228f10189ada0a49233643dd4f5e5c7df48ffd42b0638a57313afd3b7c5af5"
+    }
+  ],
+  "built_at": "2026-08-21T22:19:03.583343+00:00",
+  "features": [
+    "legion-v2-provider-neutral-orchestration",
+    "multi-account-oauth-native-api",
+    "localhost-account-control-panel",
+    "arbitrary-role-contracts",
+    "campaign-dags",
+    "resource-and-quota-doctrine",
+    "reviewed-86-skill-baseline",
+    "graphify-0.9.43",
+    "repository-data-egress-safeguard",
+    "legacy-workflow-compatibility"
+  ],
+  "release": "2.0.0",
+  "schema_version": 2,
+  "source_commit": "1fa769b49e7df01ba40c57b58599237059e32466",
+  "validation": {
+    "cli_help": "passed",
+    "compileall": "passed",
+    "installed_version": "2.0.0",
+    "pytest": "204 passed in 6.23s",
+    "source_commit": "1fa769b49e7df01ba40c57b58599237059e32466",
+    "version": "2.0.0",
+    "wheel_build": "passed",
+    "wheel_import": "passed",
+    "wheel_install": "passed"
+  },
+  "version": "2.0.0"
 }
