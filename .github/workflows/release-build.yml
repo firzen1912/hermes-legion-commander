@@ -7,12 +7,16 @@ on:
     paths:
       - ".github/workflows/release-build.yml"
       - "scripts/release_v2.py"
+      - "hermes_legion_commander/supervisor.py"
+      - "tests/test_prompt_contracts.py"
   pull_request:
     branches:
       - "main"
     paths:
       - ".github/workflows/release-build.yml"
       - "scripts/release_v2.py"
+      - "hermes_legion_commander/supervisor.py"
+      - "tests/test_prompt_contracts.py"
   workflow_dispatch:
 
 permissions:
@@ -115,7 +119,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- pyproject.toml hermes_legion_commander/__init__.py README.md CHANGELOG.md
+          git add -- pyproject.toml hermes_legion_commander/__init__.py hermes_legion_commander/supervisor.py README.md CHANGELOG.md
           git add -- scripts/bootstrap-hermes-legion-commander.ps1 scripts/bootstrap-hermes-legion-commander.sh
           git add -- scripts/install-hermes-legion-commander.ps1 scripts/install-hermes-legion-commander.sh
           git add -- scripts/repair-hermes-legion-commander.ps1 scripts/repair-hermes-legion-commander.sh
